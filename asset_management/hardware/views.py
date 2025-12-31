@@ -9,9 +9,21 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_hardware_config
 
+
+class HardwareMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = Hardware
+    fields_map = {
+            'hardware_type':'hardware_type', 'status':'status',
+            'vulner_status':'vulner_status', 'manufacturer':'manufacturer', 
+            'organization':'organization__name', 'sub_organization':'sub_organization__name'
+    }
+    choices_fields = {}
+    
 
 class HardwareListAPIView(APIView):
      
@@ -20,33 +32,46 @@ class HardwareListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_time', '-created_time', 'name']
-        applied_filters = [
-            'hostname', 'hardware_type', 'status',
-            'vulner_status','manufacturer', 'access_level', 
-            'organization', 'sub_organization'
-        ]
-        searching_fields = [
-            'name', 'hostname', 'model', 'manufacturer'
-        ]
-
-        hardwares = apply_filters_and_sorting(request, sorting_fields, applied_filters, searching_fields, session_key='hardware', model=Hardware)
+        config = get_hardware_config()
+        hardwares = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Hardware
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(hardwares, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 class HardwareAPIView(APIView):
 
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'hardware'
 
-    def get(self, request, hardware_id):
+    def get(self, request, hardware_id=None):
 
-        accessible_queryset = get_accessible_queryset(request, model=Hardware)
-        hardware = get_object_or_404(accessible_queryset, id = hardware_id)
-        serializer = serializers.DetailSerializer(hardware)
-        return Response(serializer.data, status = status.HTTP_200_OK)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
+
+        if hardware_id:
+            accessible_queryset = get_accessible_queryset(request, model=Hardware)
+            hardware = get_object_or_404(accessible_queryset, id = hardware_id)
+            serializer = serializers.DetailSerializer(hardware)
+
+        return Response({
+            'result':serializer.data if hardware_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
     
     def post(self, request):
         
@@ -96,10 +121,20 @@ class HardwareExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('hardware_applied_filters', {})
-        sorted_by = request.session.get('hardware_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=Hardware)
-        hardwares = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_hardware_config()
+        hardwares = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Hardware
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -120,16 +155,16 @@ class HardwareExportAPIView(APIView):
                 elif field.name == 'access_level' and value:
                         value = value.level_name
                 elif field.name == 'organization' and value:
-                        value = value.organization.name
+                        value = value.name
                 elif field.name == 'sub_organization' and value:
-                        value = value.sub_organization.name
+                        value = value.name
                 elif field.name == 'created_at' and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
                 elif field.name == 'updated_at' and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')
-        ws.append(row)
+            ws.append(row)
 
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

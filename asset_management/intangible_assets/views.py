@@ -9,9 +9,20 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_intangible_asset_config
 
+class IntangibleAssetsMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = IntangibleAsset
+    fields_map = {
+            'supplier': 'supplier',
+            'owner': 'owner',
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {}
 
 class IntangibleAssetsListAPIView(APIView):
 
@@ -20,14 +31,27 @@ class IntangibleAssetsListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'name']
-        allowed_filters = ['location', 'organization', 'sub_organization', 'access_level', 'supplier']
-        searching_fields = ['name', 'usage', 'owner', 'supplier']
-        intangible_assets = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='intangible_assets', model=IntangibleAsset)
+        config = get_intangible_asset_config()
+        intangible_assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=IntangibleAsset
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(intangible_assets, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -38,11 +62,17 @@ class IntangibleAssetsAPIView(APIView):
 
     def get(self, request, intangible_asset_id):
 
-        accessible_queryset = get_accessible_queryset(request, model=IntangibleAsset)
-        intangible_asset = get_object_or_404(accessible_queryset, id = intangible_asset_id)
-        serializer = serializers.DetailSerializer(intangible_asset)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if intangible_asset_id:
+            accessible_queryset = get_accessible_queryset(request, model=IntangibleAsset)
+            intangible_asset = get_object_or_404(accessible_queryset, id = intangible_asset_id)
+            serializer = serializers.DetailSerializer(intangible_asset)
+
+        return Response({
+            'result':serializer.data if intangible_asset_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -91,11 +121,20 @@ class IntangibleAssetsExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('places_and_areas_applied_filters', {})
-        sorted_by = request.session.get('places_and_areas_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=IntangibleAsset)
-        intangible_assets = accessible_queryset.filter(**filters).order_by(sorted_by)
-
+        config = get_intangible_asset_config()
+        intangible_assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=IntangibleAsset
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'درایی های نامشهود'

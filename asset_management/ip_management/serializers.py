@@ -46,7 +46,7 @@ class IPByUserListSerializer(serializers.ModelSerializer):
         }
 
 
-class IpByUserDetail(serializers.ModelSerializer):
+class IpByUserDetailSerializer(serializers.ModelSerializer):
 
     username = serializers.ReadOnlyField(source = 'user.username')
     access_level = serializers.ReadOnlyField(source = 'access_level.level_name')
@@ -58,7 +58,7 @@ class IpByUserDetail(serializers.ModelSerializer):
         ]
 
 
-class IpByUserCreateUpdate(serializers.ModelSerializer):
+class IpByUserCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = IPManage
@@ -74,6 +74,43 @@ class IpByUserCreateUpdate(serializers.ModelSerializer):
             validated_data['access_level'] = request.user.access_level
 
         return super().create(validated_data)
+    
+
+    @classmethod
+    def get_form_config(cls):
+       
+        config = []
+        model = cls.Meta.model
+        fields_to_create = getattr(cls.Meta, 'fields', [])
+
+        for field_name in fields_to_create:
+          
+            if field_name in ['id', 'user', 'access_level', 'created_at', 'updated_at']:
+                continue
+
+            try:
+                model_field = model._meta.get_field(field_name)
+                field_data = {
+                    'key': field_name,
+                    'label': model_field.verbose_name,
+                    'required': not model_field.blank,
+                    'type': model_field.get_internal_type(),
+                }
+
+                if model_field.choices:
+                    field_data['type'] = 'ChoiceField'
+                    field_data['options'] = [
+                        {'value': k, 'label': v} for k, v in model_field.choices
+                    ]
+                
+                elif model_field.is_relation:
+                    field_data['type'] = 'ForeignKey'
+
+                config.append(field_data)
+            except:
+                continue
+
+        return config
 
 
 class CreateScannedAssetSerializer(serializers.ModelSerializer):

@@ -3,6 +3,9 @@ from . import views
 
 urlpatterns = [
 
+    #filter
+    path('infrastructure-asset/metadata/', views.InfrastructureAssetsMetaDataAPIView.as_view(), name='infrastructure-assets-metadata'),
+    
     #list
     path('infrastructure-asset/list/', views.InfrastructureAssetsListAPIView.as_view(), name='infrastructure-assets-list'),
 

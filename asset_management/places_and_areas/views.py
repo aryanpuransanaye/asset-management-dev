@@ -9,8 +9,20 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_place_and_area_config
+
+class PlacesAndAreasMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = PlacesAndArea
+    fields_map = {
+            'usage': 'usage',
+            'owner': 'owner',
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {}
 
 
 class PlacesAndAreasListAPIView(APIView):
@@ -21,14 +33,27 @@ class PlacesAndAreasListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'name']
-        allowed_filters = ['location', 'organization', 'sub_organization', 'access_level']
-        searching_fields = ['name', 'owner', 'usage']
-        places_and_areas = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='places_and_areas', model=PlacesAndArea)
+        config = get_place_and_area_config()
+        places_and_areas = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=PlacesAndArea
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(places_and_areas, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -37,13 +62,19 @@ class PlacesAndAreasAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'place_and_areas'
 
-    def get(self, request, place_and_area_id):
+    def get(self, request, place_and_area_id=None):
 
-        accessible_queryset = get_accessible_queryset(request, model=PlacesAndArea)
-        place_and_area = get_object_or_404(accessible_queryset, id = place_and_area_id)
-        serializer = serializers.DetailSerializer(place_and_area)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if place_and_area_id:
+            accessible_queryset = get_accessible_queryset(request, model=PlacesAndArea)
+            place_and_area = get_object_or_404(accessible_queryset, id = place_and_area_id)
+            serializer = serializers.DetailSerializer(place_and_area)
+        
+        return Response({
+            'result':serializer.data if place_and_area_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -92,10 +123,20 @@ class PlacesAndAreasExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('places_and_areas_applied_filters', {})
-        sorted_by = request.session.get('places_and_areas_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=PlacesAndArea)
-        places_and_area = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_place_and_area_config()
+        places_and_areas = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=PlacesAndArea
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -106,7 +147,7 @@ class PlacesAndAreasExportAPIView(APIView):
         header = [field.verbose_name for field in fields]
         ws.append(header)
         
-        for thing in places_and_area:
+        for thing in places_and_areas:
             row = []
             for field in fields:
                 value = getattr(thing, field.name)
@@ -119,11 +160,9 @@ class PlacesAndAreasExportAPIView(APIView):
                     value = value.organization.name
                 elif field.name == 'sub_organization' and value:
                     value = value.sub_organization.name
-                elif field.name == 'created_at' and value:
+                elif field.name in ['created_at', 'updated_at'] and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
-                elif field.name == 'updated_at' and value:
-                    value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
-
+    
                 row.append(value if value else '-')
             ws.append(row)
 

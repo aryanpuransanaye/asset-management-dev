@@ -11,7 +11,7 @@ from itertools import chain
 import nmap, openpyxl, jdatetime
 from django.db.models import Q
 from django.http import HttpResponse
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from hardware.models import Hardware
 from software.models import Software
@@ -20,7 +20,17 @@ from places_and_areas.models import PlacesAndArea
 from infrastructure_assets.models import InfrastructureAssets
 from intangible_assets.models import IntangibleAsset
 from supplier.models import Supplier
+from .utils import get_discovered_asset_config, get_ip_manage_config
 
+
+class IPManageMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = IPManage
+    fields_map = {
+            'subnet': 'subnet',
+            'vlan': 'vlan',
+    }
+    choices_fields = {}
 
 class IPListAPIView(APIView):
 
@@ -29,11 +39,20 @@ class IPListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created_at', 'ipaddress', 'vlan']
-        applied_filters = ['subnet', 'access_level', 'vlan']
-        serching_fields = ['name', 'ipaddress']
-
-        ips = apply_filters_and_sorting(request, sorting_fields, applied_filters, serching_fields, session_key='hardware', model=IPManage)
+        config = get_ip_manage_config()
+        ips = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=IPManage
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.IPByUserListSerializer(ips, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -46,17 +65,23 @@ class IPManageAPIVIEW(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'ip_manage'
 
-    def get(self, request, ip_id):
+    def get(self, request, ip_id=None):
         
-        accessible_queryset = get_accessible_queryset(request, model=IPManage)
-        selected_ip = get_object_or_404(accessible_queryset, id=ip_id)
+        config_form = serializers.IpByUserCreateUpdateSerializer.get_form_config()
 
-        serializer = serializers.IpByUserDetail(selected_ip)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if ip_id:
+            accessible_queryset = get_accessible_queryset(request, model=IPManage)
+            selected_ip = get_object_or_404(accessible_queryset, id=ip_id)
+            serializer = serializers.IpByUserDetailSerializer(selected_ip)
+
+        return Response({
+            'result':serializer.data if ip_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
-        serializer = serializers.IpByUserCreateUpdate(data=request.data)
+        serializer = serializers.IpByUserCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user, access_level=request.user.access_level)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -67,7 +92,7 @@ class IPManageAPIVIEW(APIView):
         accessible_queryset = get_accessible_queryset(request, model=IPManage)
         selected_ip = get_object_or_404(accessible_queryset, id = int(ip_id))
 
-        serializer = serializers.IpByUserCreateUpdate(selected_ip, data=request.data, partial=True)
+        serializer = serializers.IpByUserCreateUpdateSerializer(selected_ip, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -175,6 +200,13 @@ class ScanAssetInManuallyRange(APIView):
 
 
 #asset added by scan
+
+class AssetInRangeMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = DiscoveredAsset
+    fields_map = {}
+    choices_fields = {'category': 'category'}
+
 class AssetInRangeListAPIView(APIView):
 
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
@@ -184,15 +216,25 @@ class AssetInRangeListAPIView(APIView):
 
         accessible_queryset = get_accessible_queryset(request, model=IPManage)
         selected_range = get_object_or_404(accessible_queryset, id=ip_id)
-        asset = DiscoveredAsset.objects.filter(network_range = selected_range)
+        asset_by_range = DiscoveredAsset.objects.filter(network_range = selected_range)
 
-        sorting_fields = ['created-at', '-created_at', 'ipaddress']
-        applied_filters = ['category', 'access_level']
-        searching_fields = ['ipaddress', 'mac', 'os', 'vendor']
-
-        asset = apply_filters_and_sorting(request, sorting_fields, applied_filters, searching_fields, session_key='asset', query_set=asset)
+        
+        config = get_discovered_asset_config()
+        assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            query_set=asset_by_range
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
     
-        serializer = serializers.AssetInManualyRangeListSerializer(asset, many=True)
+        serializer = serializers.AssetInManualyRangeListSerializer(assets, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -253,22 +295,33 @@ class AssetInRangeExportAPIView(APIView):
 
         accessible_queryset = get_accessible_queryset(request, model=IPManage)
         selected_range = get_object_or_404(accessible_queryset, id=ip_id)
-        discvored_asset = DiscoveredAsset.objects.filter(network_range = selected_range)
+        asset_by_range = DiscoveredAsset.objects.filter(network_range = selected_range)
 
-        filters = request.session.get('asset_applied_filters', {})
-        sorted_by = request.session.get('asset_sorted_by', '-created_at')
-        discvored_asset = discvored_asset.filter(**filters).order_by(sorted_by)
+        config = get_discovered_asset_config()
+        discovered_assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            query_set=asset_by_range
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'دارایی های اسکن شد'
 
-        fields = discvored_asset.model._meta.fields
+        fields = discovered_assets.model._meta.fields
 
         header = [field.verbose_name for field in fields]
         ws.append(header)
         
-        for thing in discvored_asset:
+        for thing in discovered_assets:
             row = []
             for field in fields:
                 value = getattr(thing, field.name)

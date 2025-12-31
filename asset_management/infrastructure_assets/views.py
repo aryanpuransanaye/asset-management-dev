@@ -9,8 +9,21 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_infrastructure_asset_config
+
+class InfrastructureAssetsMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = InfrastructureAssets
+    fields_map = {
+            'supplier': 'supplier',
+            'owner': 'owner',
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {}
+
 
 
 class InfrastructureAssetsListAPIView(APIView):
@@ -20,14 +33,27 @@ class InfrastructureAssetsListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'full_name', 'start_data', '-start_data', 'end_date_of_work', '-end_date_of_work']
-        allowed_filters = ['location', 'organization', 'sub_organization', 'access_level', 'organizational_unit', 'administrative_position', 'manager']
-        searching_fields = ['full_name', 'manager', 'location', 'personal_id']
-        infrastructure_assets = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='infrastructure_assets', model=InfrastructureAssets)
+        config = get_infrastructure_asset_config()
+        infrastructure_assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=InfrastructureAssets
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(infrastructure_assets, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -38,11 +64,17 @@ class InfrastructureAssetsAPIView(APIView):
 
     def get(self, request, infrastructure_asset_id):
 
-        accessible_queryset = get_accessible_queryset(request, model=InfrastructureAssets)
-        infrastructure_asset = get_object_or_404(accessible_queryset, id = infrastructure_asset_id)
-        serializer = serializers.DetailSerializer(infrastructure_asset)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if infrastructure_asset_id:
+            accessible_queryset = get_accessible_queryset(request, model=InfrastructureAssets)
+            infrastructure_asset = get_object_or_404(accessible_queryset, id = infrastructure_asset_id)
+            serializer = serializers.DetailSerializer(infrastructure_asset)
+
+        return Response({
+            'result':serializer.data if infrastructure_asset_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -91,10 +123,20 @@ class InfrastructureAssetsExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('places_and_areas_applied_filters', {})
-        sorted_by = request.session.get('places_and_areas_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=InfrastructureAssets)
-        infrastructure_assets = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_infrastructure_asset_config()
+        infrastructure_assets = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=InfrastructureAssets
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active

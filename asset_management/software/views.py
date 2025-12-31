@@ -9,8 +9,22 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_software_config
+
+
+class SoftwareMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = Software
+    fields_map = {
+            'port': 'port',
+            'owner': 'owner',
+            'manufacturer': 'manufacturer',
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {'license_statuses': 'license_status'}
 
 
 class SoftwareListAPIView(APIView):
@@ -20,27 +34,46 @@ class SoftwareListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_time', '-created_time', 'name', '-license_expired_data', 'license_expired_data']
-        applied_filters = ['license_status', 'port', 'organization', 'sub_organization']
-        searching_fields = ['name', 'supplier', 'owner', 'manufacturer', 'hardware_location', 'related_property']
-
-        softwares = apply_filters_and_sorting(request, sorting_fields, applied_filters, searching_fields, session_key='software', model=Software)
-
+        config = get_software_config()
+        softwares = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Software
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
         serializer = serializers.ListSerializer(softwares, many=True)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class SoftWareAPIView(APIView):
 
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'software'
 
-    def get(self, request, software_id):
+    def get(self, request, software_id=None):
 
-        accessible_queryset = get_accessible_queryset(request, model=Software)
-        software = get_object_or_404(accessible_queryset, id = software_id)
-        serializer = serializers.DetailSerializer(software)
-        return Response(serializer.data, status = status.HTTP_200_OK)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
+        if software_id:
+            accessible_queryset = get_accessible_queryset(request, model=Software)
+            software = get_object_or_404(accessible_queryset, id = software_id)
+            serializer = serializers.DetailSerializer(software)
+        
+        return Response({
+            'result':serializer.data if software_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
+    
     
     def post(self, request):
         
@@ -90,10 +123,20 @@ class SoftWareExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('software_applied_filters', {})
-        sorted_by = request.session.get('software_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=Software)
-        softwares = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_software_config()
+        softwares = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Software
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -125,7 +168,7 @@ class SoftWareExportAPIView(APIView):
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')
-        ws.append(row)
+            ws.append(row)
 
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

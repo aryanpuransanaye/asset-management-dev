@@ -56,9 +56,11 @@ class TicketDetailSerializer(serializers.ModelSerializer):
 
 class TicketCreateUpdateSerializer(serializers.ModelSerializer):
 
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
     class Meta:
         model = TicketRoom
         fields = [
+            'user',
             'question', 'is_active', 'requires_password_reset', 'additional_details',
             'priority', 'category', 'related_asset_id', 'related_asset_category'
         ]

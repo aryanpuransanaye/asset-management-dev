@@ -9,9 +9,19 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_supplier_config
 
+
+class SupplierMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = Supplier
+    fields_map = {
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {}
 
 class SupplierListAPIView(APIView):
 
@@ -20,14 +30,26 @@ class SupplierListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'suppliers_name']
-        allowed_filters = ['organization', 'sub_organization', 'access_level', 'related_property']
-        searching_fields = ['supplier_name', 'manager_name', 'support_name', 'email', 'support_mobile_number', 'manager_mobile_number', 'company_mobile_number']
-        suppliers = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='supplier', model=Supplier)
-
+        config = get_supplier_config()
+        suppliers = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Supplier
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
         serializer = serializers.ListSerializer(suppliers, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -36,13 +58,19 @@ class SupplierAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'suppliers'
 
-    def get(self, request, supplier_id):
+    def get(self, request, supplier_id=None):
 
-        accessible_queryset = get_accessible_queryset(request, model=Supplier)
-        supplier = get_object_or_404(accessible_queryset, id = supplier_id)
-        serializer = serializers.DetailSerializer(supplier)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if supplier_id:
+            accessible_queryset = get_accessible_queryset(request, model=Supplier)
+            supplier = get_object_or_404(accessible_queryset, id = supplier_id)
+            serializer = serializers.DetailSerializer(supplier)
+        
+        return Response({
+            'result':serializer.data if supplier_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -91,10 +119,20 @@ class SupplierExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('supplier_filters', {})
-        sorted_by = request.session.get('supplier_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=Supplier)
-        suppliers = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_supplier_config()
+        suppliers = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Supplier
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active

@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import TicketRoom, Question, MessageCategory, TicketMessage
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -42,7 +42,16 @@ class TicketAPIView(APIView):
 
         serializer = serializers.TicketCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user = request.user, access_level = request.user.access_level)
+            target_user = serializer.validate_data.get('user')
+
+            if target_user:
+                ticket_owner = target_user
+                user_info = f'ساخته شده برای {request.user.username}'
+            else:
+                ticket_owner = request.user
+                user_info = f'ساخته شده برای خود کاربر'
+
+            serializer.save(user = ticket_owner, access_level = ticket_owner.access_level, user_info_summary = user_info)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

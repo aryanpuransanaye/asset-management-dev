@@ -9,9 +9,20 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_service_config
 
+class ServicesMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = Services
+    fields_map = {
+            'owner': 'owner',
+            'port': 'port',
+            'organization': 'organization__name',
+            'sub_organization': 'sub_organization__name'
+    }
+    choices_fields = {}
 
 class ServicesListAPIView(APIView):
 
@@ -20,15 +31,27 @@ class ServicesListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'name', 'port']
-        allowed_filters = ['port', 'organization', 'sub_organization', 'access_level']
-        searching_fields = ['name', 'owner', 'hardware_location', 'related_property', 'build_number_os']
-        services = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='services', model=Services)
+        config = get_service_config()
+        services = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Services
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(services, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 class ServicesAPIView(APIView):
@@ -36,13 +59,19 @@ class ServicesAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'services'
 
-    def get(self, request, service_id):
+    def get(self, request, service_id=None):
 
-        accessible_queryset = get_accessible_queryset(request, model=Services)
-        service = get_object_or_404(accessible_queryset, id = service_id)
-        serializer = serializers.DetailSerializer(service)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if service_id:
+            accessible_queryset = get_accessible_queryset(request, model=Services)
+            service = get_object_or_404(accessible_queryset, id = service_id)
+            serializer = serializers.DetailSerializer(service)
+        
+        return Response({
+            'result':serializer.data if service_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -91,10 +120,20 @@ class ServicesExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('services_applied_filters', {})
-        sorted_by = request.session.get('services_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=Services)
-        services = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_service_config()
+        services = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=Services
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active

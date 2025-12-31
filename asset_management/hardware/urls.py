@@ -2,6 +2,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+
+    #filter
+    path('hardware/metadata/', views.HardwareMetaDataAPIView.as_view(), name='hardware-metadata'),
+
+
     #list
     path('hardware/list/', views.HardwareListAPIView.as_view(), name='hardware-list'),
 

@@ -8,9 +8,21 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_data_and_information_config
 
+
+class DataInformationMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = DataAndInformation
+    fields_map = {
+            'document_types': 'document_type',
+            'organization': 'organization',
+            'sub_organization': 'sub_organization'
+    }
+    choices_fields = {'confidentiality_level': 'confidentiality_level'}
+    
 
 class DataAndInformationListAPIView(APIView):
 
@@ -19,16 +31,27 @@ class DataAndInformationListAPIView(APIView):
 
     def get(self, request):
         
-        
-        sorting_fields = ['created_at', '-created-at', 'confidentiality_level', 'name']
-        allowed_filters = ['confidentiality_level', 'version', 'document_type', 'organization', 'sub_organization']
-        search_fields = ['name', 'owner', 'usage', 'location', 'version']
-        
-        data_and_informations = apply_filters_and_sorting(request, sorting_fields, allowed_filters, search_fields, session_key='data_info', model=DataAndInformation)
-
+        config = get_data_and_information_config()
+        data_and_informations = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=DataAndInformation
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
+       
         serializer = serializers.ListSerializer(data_and_informations, many=True)
-        # meta_data = serializers.ListSerializer.get_metadata()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
             
 
 
@@ -37,13 +60,19 @@ class DataAndInformationAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'data_and_information'
 
-    def get(self, request, pk):
+    def get(self, request, data_and_info_id=None):
         
-        accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
-        data_and_information = get_object_or_404(accessible_queryset, id=pk)
-        serializer  = serializers.DetailSerializer(data_and_information)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
         
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if data_and_info_id:
+            accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
+            data_and_information = get_object_or_404(accessible_queryset, id=data_and_info_id)
+            serializer  = serializers.DetailSerializer(data_and_information)
+
+        return Response({
+            'result':serializer.data if data_and_info_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
         
 
     def post(self, request):
@@ -55,6 +84,18 @@ class DataAndInformationAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, data_and_info_id):
+        
+        accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
+        selected_data_and_infomation = get_object_or_404(accessible_queryset, id=data_and_info_id)
+
+        serializer = serializers.CreateUpdateSerializer(selected_data_and_infomation, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
     
 
     def delete(self, request, *args, **kwargs):
@@ -73,17 +114,6 @@ class DataAndInformationAPIView(APIView):
 
         return Response({'message': f"{deleted_count} things are deleted"}, status=status.HTTP_200_OK)
 
-    def patch(self, request, pk):
-        
-        accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
-        selected_data_and_infomation = get_object_or_404(accessible_queryset, id=pk)
-
-        serializer = serializers.CreateUpdateSerializer(selected_data_and_infomation, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        
-        return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DataAndInformationExport(APIView):
@@ -93,10 +123,20 @@ class DataAndInformationExport(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('data_info_applied_filters', {})
-        sorted_by = request.session.get('data_info_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
-        data_and_informations = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_data_and_information_config()
+        data_and_informations = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=DataAndInformation
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
         
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -125,7 +165,7 @@ class DataAndInformationExport(APIView):
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')
-        ws.append(row)
+            ws.append(row)
 
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

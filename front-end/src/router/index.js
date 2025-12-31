@@ -18,6 +18,8 @@ import GroupCreate from '@/views/Groups/GroupCreate.vue'
 import UserCreate from '@/views/Users/UserCreate.vue'
 import UserProfileUpdate from '@/views/Users/UserProfileUpdate.vue'
 import OrganizationLayOut from '@/views/OrganizationLayOut.vue'
+import DataAndInformationList from '@/views/DataAndInformationList.vue'
+import Create from '@/views/Create.vue'
 
 
 const routes = [
@@ -100,6 +102,17 @@ const routes = [
         path:'group-create',
         name: 'GroupCreate',
         component: GroupCreate
+      },
+
+      {
+        path:'data-and-information-list',
+        name: 'DataInformationList',
+        component: DataAndInformationList
+      },
+      {
+        path:'create',
+        name: 'Create',
+        component: Create
       },
     ]
   },

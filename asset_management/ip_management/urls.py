@@ -2,16 +2,24 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    #filter
+    path('ip-manage/metdata/', views.IPManageMetaDataAPIView.as_view(), name='ip-manage'),
+
     #ip list
-    path('ip-manage/list/', views.IPListAPIView.as_view(), name='ip_list'),
+    path('ip-manage/list/', views.IPListAPIView.as_view(), name='ip-list'),
 
     #detail and update
     path('ip-manage/<int:ip_id>/', views.IPManageAPIVIEW.as_view(), name='ip-manage'),
-    #delete
+
+    #delete or create
     path('ip-manage/', views.IPManageAPIVIEW.as_view(), name='ip-manage'),
 
+    #####################################################
 
     path('scan-manualy/<int:ip_id>/', views.ScanAssetInManuallyRange.as_view(), name='scan-manualy'),
+
+    #filter
+    path('scanned-asset/metdata/', views.AssetInRangeMetaDataAPIView.as_view(), name='asset-in-range-metadata'),
 
     #asset list
     path('scanned-asset/list/<int:ip_id>/', views.AssetInRangeListAPIView.as_view(), name='asset-in-range-list'),

@@ -9,8 +9,22 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
+from .utils import get_human_resource_config
+
+
+class HumanResourcesMetaDataAPIView(BaseMetaDataAPIView):
+
+    model = HumanResource
+    fields_map = {
+        'organization':'organization__name', 
+        'sub_organization':'sub_organization__name', 
+        'administrative_position':'administrative_position', 
+        'manager':'manager'
+    }
+    choices_fields = {}
+
 
 
 class HumanResourcesListAPIView(APIView):
@@ -20,14 +34,27 @@ class HumanResourcesListAPIView(APIView):
 
     def get(self, request):
 
-        sorting_fields = ['created_at', '-created-at', 'full_name', 'start_data', '-start_data', 'end_date_of_work', '-end_date_of_work']
-        allowed_filters = ['location', 'organization', 'sub_organization', 'access_level', 'organizational_unit', 'administrative_position', 'manager']
-        searching_fields = ['full_name', 'manager', 'location', 'personal_id']
-        human_resources = apply_filters_and_sorting(request, sorting_fields, allowed_filters, searching_fields, session_key='human_resources', model=HumanResource)
+        config = get_human_resource_config()
+        human_resources = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=HumanResource
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         serializer = serializers.ListSerializer(human_resources, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -38,11 +65,17 @@ class HumanResourceAPIView(APIView):
 
     def get(self, request, human_resource_id):
 
-        accessible_queryset = get_accessible_queryset(request, model=HumanResource)
-        human_resource = get_object_or_404(accessible_queryset, id = human_resource_id)
-        serializer = serializers.DetailSerializer(human_resource)
+        config_form = serializers.CreateUpdateSerializer.get_form_config()
+        
+        if human_resource_id:
+            accessible_queryset = get_accessible_queryset(request, model=HumanResource)
+            human_resource = get_object_or_404(accessible_queryset, id = human_resource_id)
+            serializer = serializers.DetailSerializer(human_resource)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            'result':serializer.data if human_resource_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
 
     def post(self, request):
 
@@ -91,10 +124,20 @@ class HumanResourcesExportAPIView(APIView):
 
     def get(self, request):
 
-        filters = request.session.get('places_and_areas_applied_filters', {})
-        sorted_by = request.session.get('places_and_areas_sorted_by', '-created_at')
-        accessible_queryset = get_accessible_queryset(request, model=HumanResource)
-        human_resources = accessible_queryset.filter(**filters).order_by(sorted_by)
+        config = get_human_resource_config()
+        human_resources = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='hardware', 
+            model=HumanResource
+        ).select_related(
+            'organization', 
+            'sub_organization', 
+            'user', 
+            'access_level'
+        )
 
         wb = openpyxl.Workbook()
         ws = wb.active

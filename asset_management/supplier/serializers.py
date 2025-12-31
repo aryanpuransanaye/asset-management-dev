@@ -27,7 +27,6 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = Supplier
         fields = [
-            'organization', 'sub_organization',
             'suppliers_name', 'suppliers_location', 'email', 'manager_name',
             'manager_mobile_number', 'support_name', 'support_mobile_number',
             'company_mobile_number', 'related_property',

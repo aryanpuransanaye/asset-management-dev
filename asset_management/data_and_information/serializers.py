@@ -30,6 +30,6 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = DataAndInformation
         fields = [
-            'name', 'location', 'usage',
-            'owner', 'version', 'document_type', 'organization', 'sub_organization'
+            'name', 'location', 'usage', 'confidentiality_level',
+            'owner', 'version', 'document_type'
         ] + BASE_CREATE_UPDATE_FIELDS
