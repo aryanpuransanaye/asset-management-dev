@@ -34,7 +34,5 @@ urlpatterns = [
     #active directory
     path('', include('active_directory.urls')),
 
-    #core
-    path('core/', include('core.urls'))
     
 ]

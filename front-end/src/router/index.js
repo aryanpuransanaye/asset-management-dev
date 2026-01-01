@@ -107,7 +107,8 @@ const routes = [
       {
         path:'data-and-information-list',
         name: 'DataInformationList',
-        component: DataAndInformationList
+        component: DataAndInformationList,
+        props: true
       },
       {
         path:'create',

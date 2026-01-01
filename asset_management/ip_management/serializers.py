@@ -147,21 +147,6 @@ class AssetInManualyRangeListSerializer(serializers.ModelSerializer):
             return jdatetime.datetime.fromgregorian(datetime=obj.created_at).strftime('%Y/%m/%d %H:%M')
         return None
     
-    @staticmethod
-    def get_metadata():
-        return {
-            'filters': [
-                {'key': 'category', 'label': 'دسته بندی', 'type': 'select', 'data_source': 'categories'},
-                {'key': 'network_ranges', 'label': 'محدوده شبکه', 'type': 'select', 'data_source': 'network_ranges'},
-                {'key': 'access_level', 'label': 'سطح دستری', 'type': 'select', 'data_source': 'access_levels'},
-            ],
-            'sorting': [
-                {'key': 'created_at', 'label': 'تاریخ (صعودی)'},
-                {'key': '-created_at', 'label': 'تاریخ (صعودی)'},
-                {'key': 'ipaddress', 'label': 'آدرس آی پی'},
-            ], 
-            'searching': ['mac', 'ipaddress', 'os', 'vendor']
-        }
     
 
 class AssetInManualyRangeDetail(serializers.ModelSerializer):

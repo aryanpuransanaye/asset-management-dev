@@ -283,6 +283,7 @@ class UserListAPIView(APIView):
             )
         
 
+        
         serializer = serializers.UserSerializer(users, many=True)
         
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -394,6 +395,7 @@ class ExportUserAPIView(APIView):
 
         wb = openpyxl.Workbook()
         ws = wb.active
+        ws.sheet_view.rightToLeft = True
         ws.title = 'کاربان'
 
         exclude_fields = ['password', 'otp_code', 'otp_created_at', 'date_joined']

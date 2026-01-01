@@ -13,16 +13,13 @@ from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseM
 from core.permissions import DynamicSystemPermission
 from .utils import get_place_and_area_config
 
+config = get_place_and_area_config()
+
 class PlacesAndAreasMetaDataAPIView(BaseMetaDataAPIView):
 
     model = PlacesAndArea
-    fields_map = {
-            'usage': 'usage',
-            'owner': 'owner',
-            'organization': 'organization__name',
-            'sub_organization': 'sub_organization__name'
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 
 class PlacesAndAreasListAPIView(APIView):
@@ -33,7 +30,6 @@ class PlacesAndAreasListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_place_and_area_config()
         places_and_areas = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -123,7 +119,6 @@ class PlacesAndAreasExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_place_and_area_config()
         places_and_areas = apply_filters_and_sorting(
             request, 
             config['sorting'], 

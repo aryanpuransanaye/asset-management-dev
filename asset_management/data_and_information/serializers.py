@@ -5,12 +5,12 @@ from core.serializer import *
 
 class ListSerializer(BaseListSerializer):
 
-    confidentiality_display = serializers.CharField(source='get_confidentiality_level_display')
+    confidentiality_level = serializers.CharField(source='get_confidentiality_level_display')
     class Meta(BaseListSerializer.Meta):
         model = DataAndInformation
         fields = [
             'id', 'name', 'location', 'usage',
-            'owner', 'confidentiality_display', 'document_type',
+            'owner', 'confidentiality_level', 'document_type',
         ] + BASE_LIST_FIELDS
         
 

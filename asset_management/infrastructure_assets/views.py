@@ -9,21 +9,18 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_infrastructure_asset_config
+
+
+config = get_infrastructure_asset_config()
 
 class InfrastructureAssetsMetaDataAPIView(BaseMetaDataAPIView):
 
     model = InfrastructureAssets
-    fields_map = {
-            'supplier': 'supplier',
-            'owner': 'owner',
-            'organization': 'organization__name',
-            'sub_organization': 'sub_organization__name'
-    }
-    choices_fields = {}
-
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 
 class InfrastructureAssetsListAPIView(APIView):
@@ -33,7 +30,6 @@ class InfrastructureAssetsListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_infrastructure_asset_config()
         infrastructure_assets = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -48,10 +44,14 @@ class InfrastructureAssetsListAPIView(APIView):
             'access_level'
         )
 
-        serializer = serializers.ListSerializer(infrastructure_assets, many=True)
+        paginator = set_paginator(request, infrastructure_assets)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 
@@ -123,7 +123,6 @@ class InfrastructureAssetsExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_infrastructure_asset_config()
         infrastructure_assets = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -141,6 +140,7 @@ class InfrastructureAssetsExportAPIView(APIView):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'درایی های زیرساختی'
+        ws.sheet_view.rightToLeft = True
 
         fields = InfrastructureAssets._meta.fields
 
@@ -170,6 +170,5 @@ class InfrastructureAssetsExportAPIView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="infrastructure_asset.xlsx"'
-        ws.sheet_view.rightToLeft = True
         wb.save(response)
         return response

@@ -9,19 +9,17 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_supplier_config
 
+config = get_supplier_config()
 
 class SupplierMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Supplier
-    fields_map = {
-            'organization': 'organization__name',
-            'sub_organization': 'sub_organization__name'
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 class SupplierListAPIView(APIView):
 
@@ -30,7 +28,6 @@ class SupplierListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_supplier_config()
         suppliers = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -44,10 +41,15 @@ class SupplierListAPIView(APIView):
             'user', 
             'access_level'
         )
-        serializer = serializers.ListSerializer(suppliers, many=True)
+
+        paginator = set_paginator(request, suppliers)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 
@@ -119,7 +121,6 @@ class SupplierExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_supplier_config()
         suppliers = apply_filters_and_sorting(
             request, 
             config['sorting'], 

@@ -9,21 +9,18 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_human_resource_config
 
 
+config = get_human_resource_config()
+
 class HumanResourcesMetaDataAPIView(BaseMetaDataAPIView):
 
     model = HumanResource
-    fields_map = {
-        'organization':'organization__name', 
-        'sub_organization':'sub_organization__name', 
-        'administrative_position':'administrative_position', 
-        'manager':'manager'
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 
 
@@ -34,7 +31,6 @@ class HumanResourcesListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_human_resource_config()
         human_resources = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -49,10 +45,14 @@ class HumanResourcesListAPIView(APIView):
             'access_level'
         )
 
-        serializer = serializers.ListSerializer(human_resources, many=True)
+        paginator = set_paginator(request, human_resources)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 
@@ -124,7 +124,6 @@ class HumanResourcesExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_human_resource_config()
         human_resources = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -142,6 +141,7 @@ class HumanResourcesExportAPIView(APIView):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'منابع انسانی'
+        ws.sheet_view.rightToLeft = True
 
         fields = HumanResource._meta.fields
 
@@ -171,6 +171,5 @@ class HumanResourcesExportAPIView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="human_resource.xlsx"'
-        ws.sheet_view.rightToLeft = True
         wb.save(response)
         return response

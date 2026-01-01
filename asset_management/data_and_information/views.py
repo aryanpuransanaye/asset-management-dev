@@ -8,20 +8,19 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_data_and_information_config
 
 
+config = get_data_and_information_config()
+
 class DataInformationMetaDataAPIView(BaseMetaDataAPIView):
 
+    
     model = DataAndInformation
-    fields_map = {
-            'document_types': 'document_type',
-            'organization': 'organization',
-            'sub_organization': 'sub_organization'
-    }
-    choices_fields = {'confidentiality_level': 'confidentiality_level'}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
     
 
 class DataAndInformationListAPIView(APIView):
@@ -31,7 +30,7 @@ class DataAndInformationListAPIView(APIView):
 
     def get(self, request):
         
-        config = get_data_and_information_config()
+        # config = get_data_and_information_config()
         data_and_informations = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -45,11 +44,14 @@ class DataAndInformationListAPIView(APIView):
             'user', 
             'access_level'
         )
-       
-        serializer = serializers.ListSerializer(data_and_informations, many=True)
+        paginator = set_paginator(request, data_and_informations)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
             
@@ -123,7 +125,6 @@ class DataAndInformationExport(APIView):
 
     def get(self, request):
 
-        config = get_data_and_information_config()
         data_and_informations = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -141,7 +142,7 @@ class DataAndInformationExport(APIView):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'داده و اطلاعات'
-
+        ws.sheet_view.rightToLeft = True
         fields = DataAndInformation._meta.fields
         header = [field.verbose_name for field in fields]
         ws.append(header)
@@ -159,9 +160,7 @@ class DataAndInformationExport(APIView):
                         value = value.name
                 elif field.name == 'sub_organization' and value:
                         value = value.name
-                elif field.name == 'created_at' and value:
-                    value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
-                elif field.name == 'updated_at' and value:
+                elif field.name in ['created_at', 'updated_at'] and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')

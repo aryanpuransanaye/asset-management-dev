@@ -9,22 +9,18 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_software_config
+
+config = get_software_config()
 
 
 class SoftwareMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Software
-    fields_map = {
-            'port': 'port',
-            'owner': 'owner',
-            'manufacturer': 'manufacturer',
-            'organization': 'organization__name',
-            'sub_organization': 'sub_organization__name'
-    }
-    choices_fields = {'license_statuses': 'license_status'}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 
 class SoftwareListAPIView(APIView):
@@ -34,7 +30,6 @@ class SoftwareListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_software_config()
         softwares = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -48,13 +43,17 @@ class SoftwareListAPIView(APIView):
             'user', 
             'access_level'
         )
-        serializer = serializers.ListSerializer(softwares, many=True)
+
+        paginator = set_paginator(request, softwares)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
-
 
 class SoftWareAPIView(APIView):
 
@@ -123,7 +122,6 @@ class SoftWareExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_software_config()
         softwares = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -141,7 +139,8 @@ class SoftWareExportAPIView(APIView):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'نرم افزار'
-
+        ws.sheet_view.rightToLeft = True
+        
         fields = Software._meta.fields
 
         header = [field.verbose_name for field in fields]
@@ -162,9 +161,7 @@ class SoftWareExportAPIView(APIView):
                         value = value.organization.name
                 elif field.name == 'sub_organization' and value:
                         value = value.sub_organization.name
-                elif field.name == 'created_at':
-                    value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
-                elif field.name == 'updated_at':
+                elif field.name in ['created_at', 'updated_at', 'license_expired_data']:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')
@@ -174,6 +171,5 @@ class SoftWareExportAPIView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="software.xlsx"'
-        ws.sheet_view.rightToLeft = True
         wb.save(response)
         return response

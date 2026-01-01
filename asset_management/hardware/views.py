@@ -9,20 +9,17 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_hardware_config
 
 
+config = get_hardware_config()
 class HardwareMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Hardware
-    fields_map = {
-            'hardware_type':'hardware_type', 'status':'status',
-            'vulner_status':'vulner_status', 'manufacturer':'manufacturer', 
-            'organization':'organization__name', 'sub_organization':'sub_organization__name'
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
     
 
 class HardwareListAPIView(APIView):
@@ -32,7 +29,6 @@ class HardwareListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_hardware_config()
         hardwares = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -47,10 +43,14 @@ class HardwareListAPIView(APIView):
             'access_level'
         )
 
-        serializer = serializers.ListSerializer(hardwares, many=True)
+        paginator = set_paginator(request, hardwares)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 
@@ -121,7 +121,7 @@ class HardwareExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_hardware_config()
+
         hardwares = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -143,6 +143,7 @@ class HardwareExportAPIView(APIView):
         fields = Hardware._meta.fields
 
         header = [field.verbose_name for field in fields]
+        ws.sheet_view.rightToLeft = True
         ws.append(header)
         
         for thing in hardwares:
@@ -170,6 +171,5 @@ class HardwareExportAPIView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="Hardware.xlsx"'
-        ws.sheet_view.rightToLeft = True
         wb.save(response)
         return response

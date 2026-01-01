@@ -9,20 +9,17 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_service_config
+
+config = get_service_config()
 
 class ServicesMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Services
-    fields_map = {
-            'owner': 'owner',
-            'port': 'port',
-            'organization': 'organization__name',
-            'sub_organization': 'sub_organization__name'
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 class ServicesListAPIView(APIView):
 
@@ -31,7 +28,6 @@ class ServicesListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_service_config()
         services = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -46,10 +42,14 @@ class ServicesListAPIView(APIView):
             'access_level'
         )
 
-        serializer = serializers.ListSerializer(services, many=True)
+        paginator = set_paginator(request, services)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 
@@ -120,7 +120,6 @@ class ServicesExportAPIView(APIView):
 
     def get(self, request):
 
-        config = get_service_config()
         services = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -154,12 +153,10 @@ class ServicesExportAPIView(APIView):
                 elif field.name == 'access_level' and value:
                     value = value.level_name
                 elif field.name == 'organization' and value:
-                    value = value.organization.name
+                    value = value.name
                 elif field.name == 'sub_organization' and value:
-                    value = value.sub_organization.name
-                elif field.name == 'created_at' and value:
-                    value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
-                elif field.name == 'updated_at' and value:
+                    value = value.name
+                elif field.name in ['created_at', 'updated_at'] and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')

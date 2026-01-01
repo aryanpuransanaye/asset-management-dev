@@ -11,7 +11,7 @@ from itertools import chain
 import nmap, openpyxl, jdatetime
 from django.db.models import Q
 from django.http import HttpResponse
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from hardware.models import Hardware
 from software.models import Software
@@ -22,15 +22,15 @@ from intangible_assets.models import IntangibleAsset
 from supplier.models import Supplier
 from .utils import get_discovered_asset_config, get_ip_manage_config
 
+config_ip_manage = get_ip_manage_config()
+config_discovered_asset = get_discovered_asset_config()
 
 class IPManageMetaDataAPIView(BaseMetaDataAPIView):
 
     model = IPManage
-    fields_map = {
-            'subnet': 'subnet',
-            'vlan': 'vlan',
-    }
-    choices_fields = {}
+    fields_map = {field:field for field in config_ip_manage['filters']}
+    search_fields = config_ip_manage['search']
+
 
 class IPListAPIView(APIView):
 
@@ -39,23 +39,27 @@ class IPListAPIView(APIView):
 
     def get(self, request):
 
-        config = get_ip_manage_config()
         ips = apply_filters_and_sorting(
             request, 
-            config['sorting'], 
-            config['filters'], 
-            config['search'], 
+            config_ip_manage['sorting'], 
+            config_ip_manage['filters'], 
+            config_ip_manage['search'], 
             session_key='hardware', 
             model=IPManage
-        ).select_related(
-            'organization', 
-            'sub_organization', 
-            'user', 
-            'access_level'
-        )
+        ).select_related('user', 'access_level')
 
-        serializer = serializers.IPByUserListSerializer(ips, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        paginator = set_paginator(request, ips)
+        serializer = serializers.IPByUserListSerializer(paginator['data'], many=True)
+        # columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+            # 'columns': columns
+        }, status=status.HTTP_200_OK)
+
 
 
 
@@ -162,18 +166,18 @@ class ScanAssetInManuallyRange(APIView):
             except Exception:
                 continue
 
-            mac = host.get('addresses', {}).get('mac', '-')
-            os_type = '-'
-            vendor = '-'
+            mac = host.get('addresses', {}).get('mac', None)
+            os_type = None
+            vendor = None
 
             osinfo = host.get('osmatch', [])
             if osinfo:
-                os_type = osinfo[0].get('name', '-')
+                os_type = osinfo[0].get('name', None)
                 osclass = osinfo[0].get('osclass', [])
                 if osclass:
-                    vendor = osclass[0].get('vendor', '-')
+                    vendor = osclass[0].get('vendor', None)
 
-            if mac != '-' and mac in host.get('vendor', {}):
+            if mac is not None and mac in host.get('vendor', {}):
                 vendor = host['vendor'][mac]
      
             asset_data = {
@@ -204,8 +208,8 @@ class ScanAssetInManuallyRange(APIView):
 class AssetInRangeMetaDataAPIView(BaseMetaDataAPIView):
 
     model = DiscoveredAsset
-    fields_map = {}
-    choices_fields = {'category': 'category'}
+    fields_map = {field:field for field in config_discovered_asset['filters']}
+    search_fields = config_discovered_asset['search']
 
 class AssetInRangeListAPIView(APIView):
 
@@ -219,25 +223,28 @@ class AssetInRangeListAPIView(APIView):
         asset_by_range = DiscoveredAsset.objects.filter(network_range = selected_range)
 
         
-        config = get_discovered_asset_config()
         assets = apply_filters_and_sorting(
             request, 
-            config['sorting'], 
-            config['filters'], 
-            config['search'], 
+            config_discovered_asset['sorting'], 
+            config_discovered_asset['filters'], 
+            config_discovered_asset['search'], 
             session_key='hardware', 
             query_set=asset_by_range
         ).select_related(
-            'organization', 
-            'sub_organization', 
             'user', 
             'access_level'
         )
-    
-        serializer = serializers.AssetInManualyRangeListSerializer(assets, many=True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        paginator = set_paginator(request, assets)
+        serializer = serializers.AssetInManualyRangeListSerializer(paginator['data'], many=True)
+        # columns = serializers.ListSerializer.get_active_columns()
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+            # 'columns': columns
+        }, status=status.HTTP_200_OK)
 
 
 class AssetInRagneAPIView(APIView):
@@ -297,24 +304,19 @@ class AssetInRangeExportAPIView(APIView):
         selected_range = get_object_or_404(accessible_queryset, id=ip_id)
         asset_by_range = DiscoveredAsset.objects.filter(network_range = selected_range)
 
-        config = get_discovered_asset_config()
         discovered_assets = apply_filters_and_sorting(
             request, 
-            config['sorting'], 
-            config['filters'], 
-            config['search'], 
+            config_discovered_asset['sorting'], 
+            config_discovered_asset['filters'], 
+            config_discovered_asset['search'], 
             session_key='hardware', 
             query_set=asset_by_range
-        ).select_related(
-            'organization', 
-            'sub_organization', 
-            'user', 
-            'access_level'
-        )
+        ).select_related('user', 'access_level')
 
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'دارایی های اسکن شد'
+        ws.sheet_view.rightToLeft = True
 
         fields = discovered_assets.model._meta.fields
 
@@ -346,6 +348,6 @@ class AssetInRangeExportAPIView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="ipinrange.xlsx"'
-        ws.sheet_view.rightToLeft = True
+
         wb.save(response)
         return response

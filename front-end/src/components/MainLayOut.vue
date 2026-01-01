@@ -70,9 +70,35 @@
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link-custom fw-bold" to="/assets">
-              <i class="bi bi-box-seam-fill me-2 icon-gradient"></i> مدیریت دارایی‌ها
-            </router-link>
+            <div 
+              class="nav-link-custom d-flex justify-content-between align-items-center" 
+              @click="toggleAssetsMenu"
+            >
+              <span class="fw-bold"><i class="bi bi-box-seam-fill me-2 icon-gradient"></i> مدیریت دارایی‌ها</span>
+              <i :class="assetsMenuOpen ? 'bi bi-chevron-up' : 'bi bi-chevron-down'" class="small"></i>
+            </div>
+            
+            <transition name="slide-fade">
+              <ul v-show="assetsMenuOpen" class="nav flex-column ms-3 mt-1 submenu-list">
+                <li class="nav-item">
+                  <router-link 
+                    class="nav-link submenu-link"
+                    :to="{ name: 'DataInformationList', query: { api: 'asset/data-and-information' } }"
+                  >
+                    <i class="bi bi-dot me-1"></i> داده و اطلاعات
+                  </router-link>
+                </li>
+
+                <li class="nav-item">
+                  <router-link 
+                    class="nav-link submenu-link"
+                    :to="{ name: 'DataInformationList', query: { api: 'asset/hardware' } }"
+                  >
+                    <i class="bi bi-dot me-1"></i> سخت‌افزار
+                  </router-link>
+                </li>
+              </ul>
+            </transition>
           </li>
           
           <li class="nav-item">
@@ -106,12 +132,14 @@ import { useRouter } from 'vue-router'
 import api from '../api/axios'
 
 const router = useRouter()
-const userMenuOpen = ref(true)
+const userMenuOpen = ref(false)
+const assetsMenuOpen = ref(true) // به صورت پیش‌فرض باز باشد
 const userDropdownOpen = ref(false)
 const dropdownRef = ref(null)
 const user = ref({ username: 'کاربر' })
 
 const toggleUserMenu = () => { userMenuOpen.value = !userMenuOpen.value }
+const toggleAssetsMenu = () => { assetsMenuOpen.value = !assetsMenuOpen.value }
 const toggleUserDropdown = () => { userDropdownOpen.value = !userDropdownOpen.value }
 
 const fetchUser = async () => {
@@ -206,22 +234,25 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 .nav-link-custom:hover { background: rgba(255, 255, 255, 0.05); }
 
-
 .router-link-active {
   color: #0dcaf0 !important;
-  background: transparent !important;
+  background: rgba(13, 202, 240, 0.1) !important;
 }
 
 .submenu-link {
   color: rgba(255, 255, 255, 0.85) !important;
   font-size: 0.9rem;
-  padding: 8px 15px;
+  padding: 10px 15px;
   text-decoration: none;
-  display: block;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  margin-bottom: 2px;
 }
 
 .submenu-link:hover, .submenu-link.router-link-active {
   color: #0dcaf0 !important;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .icon-gradient { color: #0dcaf0; }

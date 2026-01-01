@@ -4,7 +4,7 @@ from organization.models import Organization, SubOrganization
 
 BASE_LIST_FIELDS = [
 
-    'username', 'access_level_name', 'organization_name', 'sub_organization_name',
+    'user', 'access_level', 'organization', 'sub_organization',
     'ipaddress', 'mac', 'os', 'vendor', 'created_at'
 ]
 
@@ -20,10 +20,10 @@ BASE_CREATE_UPDATE_FIELDS = [
 
 class BaseListSerializer(serializers.ModelSerializer):
 
-    username = serializers.ReadOnlyField(source='user.username')
-    access_level_name = serializers.ReadOnlyField(source='user.access_level.level_name')
-    organization_name = serializers.ReadOnlyField(source='organization.name')
-    sub_organization_name = serializers.ReadOnlyField(source='sub_organization.name')
+    user = serializers.ReadOnlyField(source='user.username', label='نام کاربری')
+    access_level = serializers.ReadOnlyField(source='user.access_level.level_name', label='سطح دسترسی')
+    organization = serializers.ReadOnlyField(source='organization.name', label='سازمان')
+    sub_organization = serializers.ReadOnlyField(source='sub_organization.name', label='زیرسازمان')
     
     created_at = serializers.SerializerMethodField()
 
@@ -60,8 +60,8 @@ class BaseListSerializer(serializers.ModelSerializer):
 
 class BaseDetailSerializer(serializers.ModelSerializer):
 
-    organization_name = serializers.ReadOnlyField(source = 'organization.name')
-    sub_organization_name = serializers.ReadOnlyField(source = 'sub_organization.name')
+    organization = serializers.ReadOnlyField(source = 'organization.name')
+    sub_organization = serializers.ReadOnlyField(source = 'sub_organization.name')
 
     class Meta:
         model = None
