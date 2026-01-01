@@ -75,6 +75,9 @@
 
         <div class="d-flex justify-content-between align-items-center mt-4">
           <div class="d-flex gap-2">
+            <button @click="goToCreatePage" class="btn btn-primary btn-sm px-3 shadow-sm">
+              <i class="bi bi-plus-lg"></i> افزودن رکورد جدید
+            </button>
             <button v-if="selectedIds.length > 0" @click="handleDelete()" class="btn btn-danger btn-sm px-3 shadow-sm">
               <i class="bi bi-trash-fill"></i> حذف گروهی ({{ selectedIds.length }})
             </button>
@@ -141,7 +144,7 @@
               </td>
               <td class="text-center align-middle">
                 <div class="d-flex justify-content-center gap-3">
-                  <button class="btn btn-sm btn-link text-primary p-0 text-decoration-none" @click="$emit('edit', row.id)">ویرایش</button>
+                  <button class="btn btn-sm btn-link text-primary p-0 text-decoration-none" @click="goToUpdatePage(row.id)">ویرایش</button>
                   <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none" @click="handleDelete(row.id)">حذف</button>
                 </div>
               </td>
@@ -181,6 +184,8 @@ import api from '@/api/axios';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
+import { useRouter } from 'vue-router';
+const router = useRouter(); //
 
 const props = defineProps({
   apiEndpoint: {
@@ -190,7 +195,25 @@ const props = defineProps({
   }
 });
 
-// اصلاح شده: اولویت با پراپ، اگر نبود از کوئری URL بگیرد
+const goToCreatePage = () => {
+  // فرض کنیم آدرس صفحه ساختن تو این شکلی است
+  // مثلا: /asset/data-and-information/create
+  console.log("دکمه کار می‌کند!");
+  const baseApi = getCurrentApi(); 
+  router.push({ 
+    name: 'CreateAsset', // یا هر اسمی که در router/index.js برای صفحه ساختن گذاشتی
+    query: { api: baseApi } 
+  }); 
+};
+
+const goToUpdatePage = (id) => {
+  const baseApi = getCurrentApi(); 
+  router.push({ 
+    name: 'CreateAsset', // یا هر اسمی که در router/index.js برای صفحه ساختن گذاشتی
+    query: { api: baseApi, id:id } 
+  }); 
+}
+
 const getCurrentApi = () => {
   return props.apiEndpoint || route.query.api || 'asset/data-and-information';
 }
@@ -212,7 +235,6 @@ const queryParams = reactive({
 
 const sortState = reactive({ key: null, order: 'asc' });
 
-// اصلاح شده: گوش دادن به تغییرات پراپ و کوئری URL برای بروزرسانی خودکار
 watch(() => [props.apiEndpoint, route.query.api], () => {
   resetFilters();
   fetchMetadata();

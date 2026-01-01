@@ -83,7 +83,7 @@
                 <li class="nav-item">
                   <router-link 
                     class="nav-link submenu-link"
-                    :to="{ name: 'DataInformationList', query: { api: 'asset/data-and-information' } }"
+                    :to="{ name: 'AssetsList', query: { api: 'asset/data-and-information' } }"
                   >
                     <i class="bi bi-dot me-1"></i> داده و اطلاعات
                   </router-link>
@@ -92,7 +92,7 @@
                 <li class="nav-item">
                   <router-link 
                     class="nav-link submenu-link"
-                    :to="{ name: 'DataInformationList', query: { api: 'asset/hardware' } }"
+                    :to="{ name: 'AssetsList', query: { api: 'asset/hardware' } }"
                   >
                     <i class="bi bi-dot me-1"></i> سخت‌افزار
                   </router-link>

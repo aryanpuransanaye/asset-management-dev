@@ -9,7 +9,7 @@ BASE_LIST_FIELDS = [
 ]
 
 BASE_DETAIL_FIELDS = [
-    'organization_name', 'sub_organization_name',
+    'organization', 'sub_organization',
     'ipaddress', 'mac', 'os','vendor'
 ]
 
@@ -71,10 +71,13 @@ class BaseDetailSerializer(serializers.ModelSerializer):
 class BaseCreateUpdateSerializer(serializers.ModelSerializer):
 
     organization = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all()
+    queryset=Organization.objects.all(),
+    required=False
+        
     )
     sub_organization = serializers.PrimaryKeyRelatedField(
-        queryset=SubOrganization.objects.all()
+    queryset=SubOrganization.objects.all(),
+    required=False
     )
     class Meta:
         model = None

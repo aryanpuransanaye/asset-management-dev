@@ -18,9 +18,8 @@ import GroupCreate from '@/views/Groups/GroupCreate.vue'
 import UserCreate from '@/views/Users/UserCreate.vue'
 import UserProfileUpdate from '@/views/Users/UserProfileUpdate.vue'
 import OrganizationLayOut from '@/views/OrganizationLayOut.vue'
-import DataAndInformationList from '@/views/DataAndInformationList.vue'
-import Create from '@/views/Create.vue'
-
+import AssetsList from '@/views/Assets/AssetsList.vue'
+import CreateAssets from '@/views/Assets/CreateAssets.vue'
 
 const routes = [
 
@@ -105,15 +104,15 @@ const routes = [
       },
 
       {
-        path:'data-and-information-list',
-        name: 'DataInformationList',
-        component: DataAndInformationList,
+        path:'assets-list',
+        name: 'AssetsList',
+        component: AssetsList,
         props: true
       },
       {
         path:'create',
-        name: 'Create',
-        component: Create
+        name: 'CreateAsset',
+        component: CreateAssets
       },
     ]
   },
