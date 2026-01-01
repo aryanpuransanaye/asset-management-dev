@@ -79,7 +79,6 @@ class User(AbstractUser):
         verbose_name='مجوزهای کاربر'
     )
 
-
     def __str__(self):
         return self.username
     

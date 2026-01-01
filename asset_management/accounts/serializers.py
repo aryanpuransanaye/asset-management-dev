@@ -2,6 +2,23 @@ from rest_framework import serializers
 from .models import User, AccessLevel
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['is_staff'] = self.user.is_staff
+        data['is_superuser'] = self.user.is_superuser
+        data['is_active'] = self.user.is_active
+
+        all_perms = self.user.get_all_permissions()
+        data['permissions'] = [p for p in all_perms if p.startswith('accounts.')] if not data['is_superuser'] else ['*']
+        
+        return data
 
 
 class AccessLevelSerliazlizer(serializers.ModelSerializer):

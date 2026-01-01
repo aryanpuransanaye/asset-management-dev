@@ -56,7 +56,7 @@
             <transition name="slide-fade">
               <ul v-show="userMenuOpen" class="nav flex-column ms-3 mt-1 submenu-list">
                 <li class="nav-item">
-                  <router-link class="nav-link submenu-link" :to="{ name: 'UsersList' }">
+                  <router-link class="nav-link submenu-link" v-if="auth.isAdmin" :to="{ name: 'UsersList' }">
                     <i class="bi bi-dot me-1"></i> لیست کاربران
                   </router-link>
                 </li>
@@ -130,6 +130,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios'
+import { useAuthStore } from '@/stores/auth'
+const auth = useAuthStore()
 
 const router = useRouter()
 const userMenuOpen = ref(false)

@@ -17,8 +17,11 @@ from django.db.models import Q, Count
 import random, openpyxl, jdatetime
 from django.http import HttpResponse
 from core.utils import apply_filters_and_sorting
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-    
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = serializers.MyTokenObtainPairSerializer
+ 
 
 class LoginStepOneAPIView(APIView):
     permission_classes = [AllowAny]
@@ -62,7 +65,7 @@ class LoginStepTwoAPIView(APIView):
             user.save()
 
             refresh = RefreshToken.for_user(user)
-            return Response({'refresh': str(refresh), 'access': str(refresh.access_token)})
+            return Response({'refresh': str(refresh), 'access': str(refresh.access_token),})
         
         return Response({'error': 'کد تایید اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
 
