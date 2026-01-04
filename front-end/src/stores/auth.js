@@ -27,6 +27,14 @@ export const useAuthStore = defineStore('auth', {
   },
 
   getters: {
+
+    canSeeAssets: (state) => {
+      if (state.user?.is_staff) return true;
+
+      return state.userPermissions.some(p =>
+        p.includes('_crud') || p.includes('_r')
+      )
+    },
     // اصلاح شده برای پشتیبانی از "*" و فلگ‌های ادمین
     hasPermission: (state) => (permission) => {
         // ۱. چک کردن ستاره (خروجی جدید بک‌اِند تو برای سوپریوزر)

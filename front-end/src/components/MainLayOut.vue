@@ -44,7 +44,7 @@
         <div class="sidebar-section-label mb-3 fw-bold">منوی اصلی</div>
         
         <ul class="nav flex-column gap-2">
-          <li class="nav-item">
+          <li class="nav-item" v-if="auth.isAdmin">
             <div 
               class="nav-link-custom d-flex justify-content-between align-items-center" 
               @click="toggleUserMenu"
@@ -61,7 +61,7 @@
                   </router-link>
                 </li>
                 <li class="nav-item">
-                  <router-link class="nav-link submenu-link" :to="{ name: 'GroupsList' }">
+                  <router-link class="nav-link submenu-link" v-if="auth.isAdmin" :to="{ name: 'GroupsList' }">
                     <i class="bi bi-dot me-1"></i> گروه‌های کاربری
                   </router-link>
                 </li>
@@ -82,8 +82,8 @@
               <ul v-show="assetsMenuOpen" class="nav flex-column ms-3 mt-1 submenu-list">
                 <li class="nav-item">
                   <router-link 
-                    class="nav-link submenu-link"
-                    :to="{ name: 'AssetsList', query: { api: 'asset/data-and-information' } }"
+                    class="nav-link submenu-link" v-if="auth.canSeeAssets"
+                    :to="{ name: 'AssetsList', query: { api: 'asset/data-and-information', permission_name: 'data_and_information' } }"
                   >
                     <i class="bi bi-dot me-1"></i> داده و اطلاعات
                   </router-link>

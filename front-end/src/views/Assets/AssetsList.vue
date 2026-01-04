@@ -16,7 +16,7 @@
                 v-model="queryParams.q" 
                 type="text" 
                 class="form-control border-start-0" 
-                :placeholder="(metadata.display_names?.q || 'جستجو آنی...') + '...'"
+                :placeholder="(metadata.display_names?.q || 'جستجو...') + '...'"
               />
             </div>
           </div>
@@ -44,11 +44,7 @@
           <div class="col-md-2" v-if="metadata.display_names?.organization">
             <select v-model="queryParams.organization" class="form-select" @change="handleOrgChange">
               <option :value="null">{{ metadata.display_names.organization }} (همه)</option>
-              <option 
-                v-for="item in (metadata.organization || []).filter(i => i && i.name)" 
-                :key="item?.id" 
-                :value="item?.id"
-              >
+              <option v-for="item in (metadata.organization || [])" :key="item?.id" :value="item?.id">
                 {{ item?.name }}
               </option>
             </select>
@@ -62,11 +58,7 @@
               :disabled="!queryParams.organization"
             >
               <option :value="null">{{ metadata.display_names.sub_organization }} (همه)</option>
-              <option 
-                v-for="item in filteredSubOrgs.filter(i => i && i.name)" 
-                :key="item?.id" 
-                :value="item?.id"
-              >
+              <option v-for="item in filteredSubOrgs" :key="item?.id" :value="item?.id">
                 {{ item?.name }}
               </option>
             </select>
@@ -75,10 +67,10 @@
 
         <div class="d-flex justify-content-between align-items-center mt-4">
           <div class="d-flex gap-2">
-            <button @click="goToCreatePage" class="btn btn-primary btn-sm px-3 shadow-sm">
+            <button v-if="crud" @click="goToCreatePage" class="btn btn-primary btn-sm px-3 shadow-sm">
               <i class="bi bi-plus-lg"></i> افزودن رکورد جدید
             </button>
-            <button v-if="selectedIds.length > 0" @click="handleDelete()" class="btn btn-danger btn-sm px-3 shadow-sm">
+            <button v-if="crud && selectedIds.length > 0" @click="handleDelete()" class="btn btn-danger btn-sm px-3 shadow-sm">
               <i class="bi bi-trash-fill"></i> حذف گروهی ({{ selectedIds.length }})
             </button>
           </div>
@@ -109,20 +101,16 @@
               <div class="d-flex align-items-center gap-1">
                 {{ metadata.display_names?.[col.key] || col.label || col.key }}
                 <span v-if="sortState.key === col.key" class="text-primary">
-                  <i v-if="sortState.order === 'asc'" class="bi bi-sort-up"></i>
-                  <i v-else class="bi bi-sort-down"></i>
-                </span>
-                <span v-else class="text-muted opacity-25">
-                  <i class="bi bi-arrow-down-up" style="font-size: 0.7rem;"></i>
+                  <i :class="sortState.order === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down'"></i>
                 </span>
               </div>
             </th>
-            <th class="text-center text-secondary small fw-bold">عملیات</th>
+            <th v-if="crud" class="text-center text-secondary small fw-bold">عملیات</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td :colspan="(columns.filter(c => c.key !== 'id').length) + 2" class="text-center py-5">
+            <td :colspan="columns.length + 2" class="text-center py-5">
               <div class="spinner-border spinner-border-sm text-primary"></div>
               <span class="ms-2 text-primary">در حال بروزرسانی لیست...</span>
             </td>
@@ -134,15 +122,9 @@
                 <input type="checkbox" class="form-check-input" :value="row.id" v-model="selectedIds" />
               </td>
               <td v-for="col in columns.filter(c => c.key !== 'id')" :key="col.key" class="small align-middle text-nowrap">
-                {{ 
-                  (row[col.key] != null && 
-                  String(row[col.key]).trim() !== '' && 
-                  String(row[col.key]).toLowerCase() !== 'none' && 
-                  String(row[col.key]).toLowerCase() !== 'null') 
-                  ? row[col.key] : '-' 
-                }}
+                {{ (row[col.key] != null && String(row[col.key]).toLowerCase() !== 'none') ? row[col.key] : '-' }}
               </td>
-              <td class="text-center align-middle">
+              <td v-if="crud" class="text-center align-middle">
                 <div class="d-flex justify-content-center gap-3">
                   <button class="btn btn-sm btn-link text-primary p-0 text-decoration-none" @click="goToUpdatePage(row.id)">ویرایش</button>
                   <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none" @click="handleDelete(row.id)">حذف</button>
@@ -150,7 +132,7 @@
               </td>
             </tr>
             <tr v-if="items.length === 0">
-              <td :colspan="(columns.filter(c => c.key !== 'id').length) + 2" class="text-center py-5 text-muted small">اطلاعاتی یافت نشد.</td>
+              <td :colspan="columns.length + 2" class="text-center py-5 text-muted small">اطلاعاتی یافت نشد.</td>
             </tr>
           </template>
         </tbody>
@@ -159,7 +141,7 @@
 
     <div class="d-flex justify-content-between align-items-center mt-3">
       <div class="text-muted small">
-        نمایش صفحه {{ queryParams.page }} از {{ totalPages }} (کل رکوردها: {{ totalItems }})
+        صفحه {{ queryParams.page }} از {{ totalPages }} (کل: {{ totalItems }})
       </div>
       <nav v-if="totalPages > 1">
         <ul class="pagination pagination-sm mb-0">
@@ -181,43 +163,28 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import api from '@/api/axios';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
-import { useRouter } from 'vue-router';
-const router = useRouter(); //
+const router = useRouter();
+const auth = useAuthStore();
 
 const props = defineProps({
-  apiEndpoint: {
-    type: String,
-    required: false,
-    default: ''
-  }
+  apiEndpoint: { type: String, default: '' }
 });
 
-const goToCreatePage = () => {
-  // فرض کنیم آدرس صفحه ساختن تو این شکلی است
-  // مثلا: /asset/data-and-information/create
-  console.log("دکمه کار می‌کند!");
-  const baseApi = getCurrentApi(); 
-  router.push({ 
-    name: 'CreateAsset', // یا هر اسمی که در router/index.js برای صفحه ساختن گذاشتی
-    query: { api: baseApi } 
-  }); 
-};
+// --- منطق دسترسی‌ها ---
+const modelPermissionKey = computed(() => {
+  const nameFromQuery = route.query.permission_name;
+  if (nameFromQuery) return nameFromQuery;
+  const path = props.apiEndpoint || route.query.api || 'asset/data-and-information';
+  return path.split('/').pop().replace(/-/g, '_'); 
+});
 
-const goToUpdatePage = (id) => {
-  const baseApi = getCurrentApi(); 
-  router.push({ 
-    name: 'CreateAsset', // یا هر اسمی که در router/index.js برای صفحه ساختن گذاشتی
-    query: { api: baseApi, id:id } 
-  }); 
-}
+const crud = computed(() => auth.hasPermission(`accounts.${modelPermissionKey.value}_crud`) || auth.isAdmin);
 
-const getCurrentApi = () => {
-  return props.apiEndpoint || route.query.api || 'asset/data-and-information';
-}
-
+// --- متغیرها ---
 const items = ref([]); 
 const columns = ref([]);
 const loading = ref(false);
@@ -235,35 +202,26 @@ const queryParams = reactive({
 
 const sortState = reactive({ key: null, order: 'asc' });
 
-watch(() => [props.apiEndpoint, route.query.api], () => {
-  resetFilters();
-  fetchMetadata();
-  fetchData();
-}, { deep: true });
+// --- توابع کمکی ---
+const getCurrentApi = () => props.apiEndpoint || route.query.api;
 
-watch(() => queryParams.q, () => {
-  if (searchTimeout) clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => handleFilterChange(), 500);
-});
+const goToCreatePage = () => {
+  router.push({ name: 'CreateAsset', query: { api: getCurrentApi() } });
+};
 
-const filteredSubOrgs = computed(() => {
-  if (!queryParams.organization || !metadata.value.sub_organization) return [];
-  return metadata.value.sub_organization.filter(sub => sub && sub.organization_id === queryParams.organization);
-});
+const goToUpdatePage = (id) => {
+  router.push({ name: 'CreateAsset', query: { api: getCurrentApi(), id: id } });
+};
 
-const isAllSelected = computed(() => items.value.length > 0 && selectedIds.value.length === items.value.length);
-
+// --- مدیریت داده‌ها ---
 const fetchData = async () => {
-  const apiPath = getCurrentApi();
   loading.value = true;
   try {
     const params = {};
     Object.keys(queryParams).forEach(key => {
       if (queryParams[key] !== null && queryParams[key] !== '') params[key] = queryParams[key];
     });
-    
-    const response = await api.get(`${apiPath}/list/`, { params });
-    
+    const response = await api.get(`${getCurrentApi()}/list/`, { params });
     items.value = response.data.results || [];
     columns.value = response.data.columns || [];
     totalPages.value = response.data.total_pages || 1;
@@ -277,8 +235,7 @@ const fetchData = async () => {
 
 const fetchMetadata = async () => {
   try {
-    const apiPath = getCurrentApi();
-    const response = await api.get(`${apiPath}/metadata/`);
+    const response = await api.get(`${getCurrentApi()}/metadata/`);
     metadata.value = response.data || { display_names: {} };
     Object.keys(metadata.value.display_names || {}).forEach(key => {
       if (!(key in queryParams)) queryParams[key] = key === 'q' ? '' : null;
@@ -289,93 +246,90 @@ const fetchMetadata = async () => {
 };
 
 const handleDelete = async (id = null) => {
-  const apiPath = getCurrentApi();
   const idsToDelete = id ? [id] : selectedIds.value;
-  if (idsToDelete.length === 0) return;
+  if (!idsToDelete.length || !confirm(id ? "حذف شود؟" : `${idsToDelete.length} مورد حذف شوند؟`)) return;
 
-  if (confirm(id ? "آیا از حذف این مورد اطمینان دارید؟" : `آیا ${idsToDelete.length} مورد پاک شوند؟`)) {
-    try {
-      await api.delete(`${apiPath}/`, { data: { ids: idsToDelete } });
-      selectedIds.value = [];
-      await fetchData();
-    } catch (error) {
-      alert("خطا در حذف.");
-    }
+  try {
+    await api.delete(`${getCurrentApi()}/`, { data: { ids: idsToDelete } });
+    selectedIds.value = [];
+    fetchData();
+  } catch (error) {
+    alert("خطا در حذف.");
   }
 };
 
-const handleFilterChange = () => {
-  queryParams.page = 1;
+// --- واچرز و فیلترها ---
+watch(() => [props.apiEndpoint, route.query.api], () => {
+  resetFilters();
+  fetchMetadata();
   fetchData();
-};
+});
+
+watch(() => queryParams.q, () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => handleFilterChange(), 500);
+});
+
+const filteredSubOrgs = computed(() => {
+  if (!queryParams.organization || !metadata.value.sub_organization) return [];
+  return metadata.value.sub_organization.filter(sub => sub.organization_id === queryParams.organization);
+});
+
+const isAllSelected = computed(() => items.value.length > 0 && selectedIds.value.length === items.value.length);
+
+const handleFilterChange = () => { queryParams.page = 1; fetchData(); };
+const handleOrgChange = () => { queryParams.sub_organization = null; handleFilterChange(); };
+const changePage = (p) => { queryParams.page = p; fetchData(); };
+const toggleSelectAll = (e) => { selectedIds.value = e.target.checked ? items.value.map(i => i.id) : []; };
 
 const handleSort = (key) => {
-  if (sortState.key === key) {
-    sortState.order = sortState.order === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortState.key = key;
-    sortState.order = 'asc';
-  }
+  sortState.order = (sortState.key === key && sortState.order === 'asc') ? 'desc' : 'asc';
+  sortState.key = key;
   queryParams.sort_by = sortState.order === 'desc' ? `-${key}` : key;
   handleFilterChange();
 };
 
-const changePage = (p) => {
-  queryParams.page = p;
-  fetchData();
-};
-
-const toggleSelectAll = (event) => {
-  selectedIds.value = event.target.checked ? items.value.map(i => i.id) : [];
-};
-
-const handleOrgChange = () => {
-  queryParams.sub_organization = null;
-  handleFilterChange();
-};
-
 const resetFilters = () => {
+  // ۱. پاک کردن متن جستجو
   queryParams.q = '';
-  Object.keys(queryParams).forEach(key => {
-    if (key !== 'page' && key !== 'q') queryParams[key] = null;
+
+  // ۲. نال کردن تمام فیلترهای داینامیک (به جز صفحه و جستجو)
+  Object.keys(queryParams).forEach(key => { 
+    if (!['page', 'q'].includes(key)) queryParams[key] = null; 
   });
+
+  // ۳. برگرداندن مرتب‌سازی به حالت پیش‌فرض (اختیاری اما توصیه می‌شود)
+  queryParams.sort_by = '-created_at';
+  sortState.key = null;
+  sortState.order = 'asc';
+
+  // ۴. مهم‌ترین بخش: برگرداندن به صفحه ۱ و فراخوانی مجدد داده‌ها
+  queryParams.page = 1;
+  fetchData(); 
 };
 
 const exportData = async () => {
   try {
     loading.value = true;
-    const apiPath = getCurrentApi();
-    const exportParams = { ...queryParams };
-    delete exportParams.page;
-    const response = await api.get(`${apiPath}/export/`, { 
-      params: exportParams,
-      responseType: 'blob' 
-    });
+    const params = { ...queryParams }; delete params.page;
+    const response = await api.get(`${getCurrentApi()}/export/`, { params, responseType: 'blob' });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Export_${new Date().toLocaleDateString('fa-IR')}.xlsx`);
-    document.body.appendChild(link);
+    link.setAttribute('download', `${modelPermissionKey.value}_${new Date().toLocaleDateString('fa-IR')}.xlsx`);
     link.click();
-    link.remove();
   } catch (error) {
-    alert("خطا در دانلود فایل اکسل.");
+    alert("خطا در اکسل.");
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(async () => {
-  await fetchMetadata();
-  await fetchData();
-});
+onMounted(() => { fetchMetadata(); fetchData(); });
 </script>
 
 <style scoped>
-.sticky-top {
-  z-index: 10;
-  background-color: #f8f9fa !important;
-}
+.sticky-top { z-index: 10; background-color: #f8f9fa !important; }
 th:hover { background-color: #f1f1f1; }
 .table-active { background-color: rgba(13, 110, 253, 0.05) !important; }
 .table th, .table td { text-align: right !important; }

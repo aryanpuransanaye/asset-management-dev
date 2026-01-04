@@ -65,7 +65,7 @@ class LoginStepTwoAPIView(APIView):
             user.save()
 
             refresh = RefreshToken.for_user(user)
-            return Response({'refresh': str(refresh), 'access': str(refresh.access_token),})
+            return Response({'refresh': str(refresh), 'access': str(refresh.access_token)})
         
         return Response({'error': 'کد تایید اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
 
