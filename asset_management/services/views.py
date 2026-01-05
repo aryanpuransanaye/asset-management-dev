@@ -28,10 +28,10 @@ class ServicesSummaryAPIView(APIView):
         total_services = accessible_queryset.count()
         last_service = accessible_queryset.order_by('-created_at').first()
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد سرویس‌ها', 'value': total_services, 'color': 'blue'},
             {'label': 'جدیدترین', 'value': last_service.name if last_service else 'دارایی ثتب نشده', 'color': 'green'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

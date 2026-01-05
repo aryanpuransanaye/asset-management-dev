@@ -31,13 +31,13 @@ class DataAndInformationSummaryAPIView(APIView):
             public_count =  Count('id', filter=Q(confidentiality_level='2')),
         )
 
-        summary_data ={
+        summary_data =[
             {'label': 'کل', 'value': total_count, 'color': 'blue'},
             {'label': 'جدیدترین', 'value': recent_item.name if recent_item else 'داده یا اطلاعات ثبت نشده', 'color': 'grey'},
             {'label': 'خصوصی', 'value': data_and_informations['private_count'], 'color': 'red'},
             {'label': 'محرمانه', 'value': data_and_informations['confidential_count'], 'color': 'orange'},
             {'label': 'عمومی', 'value': data_and_informations['public_count'], 'color': 'green'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

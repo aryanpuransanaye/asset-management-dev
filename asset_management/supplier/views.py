@@ -26,9 +26,9 @@ class SupplierSummaryAPIView(APIView):
 
         total_suppliers = accessible_queryset.count()
         
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل', 'value': total_suppliers, 'color': 'blue'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

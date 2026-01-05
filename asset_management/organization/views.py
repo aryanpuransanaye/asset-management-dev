@@ -95,9 +95,9 @@ class SubOrganizationSummaryAPIView(APIView):
         organization = get_object_or_404(Organization, id = organization_id)
         total_sub_organizations = SubOrganization.objects.filter(organization=organization).count()
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد زیرسازمان‌ها', 'value': total_sub_organizations, 'color': 'green'}
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

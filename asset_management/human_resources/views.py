@@ -29,11 +29,11 @@ class HumanResourcesSummaryAPIView(APIView):
         recent_item = accessible_queryset.order_by('-created_at').first().full_name if accessible_queryset.exists() else None
         person_in_charge_count = accessible_queryset.filter(Q(end_date_of_work__isnull=True) | Q(end_date_of_work__gt=jdatetime.date.today())).count()
         
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
             {'label': 'جدیدترین', 'value': recent_item, 'color': 'grey'},
             {'label': 'شخص در دسترس', 'value': person_in_charge_count, 'color': 'green'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
         

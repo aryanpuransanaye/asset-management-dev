@@ -34,12 +34,12 @@ class InfrastructureAssetsSummaryAPIView(APIView):
             total_owner = Count('owner', distinct=True),
         )
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
             {'label': 'جدیدترین دارایی', 'value': last_infrastructure_assets.name if last_infrastructure_assets else 'دارایی ثبت نشده', 'color': 'grey'},
             {'label': 'تعداد تامین کننده', 'value': inftastructure_assets['total_supplier'], 'color': 'green'},
             {'label': 'تعداد مالک', 'value': inftastructure_assets['total_owner'], 'color': 'orange'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
     

@@ -28,10 +28,10 @@ class PlacesAndAreasSummaryAPIView(APIView):
 
         total_count = accessible_queryset.count()
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد مکان‌ها و مناطق', 'value': total_count, 'color': 'purple'},
             {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

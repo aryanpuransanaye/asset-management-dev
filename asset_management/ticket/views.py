@@ -27,11 +27,11 @@ class TicketSummaryAPIView(APIView):
             closed_tickets_count = Count('id', filter=Q(is_active=False)),
         )
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل تیکت‌ها', 'value': ticket_details['total_tickets_count'], 'color': 'blue'},
             {'label': 'تیکت‌های باز', 'value': ticket_details['open_tickets_count'], 'color': 'green'},
             {'label': 'تیکت‌های بسته شده', 'value': ticket_details['closed_tickets_count'], 'color': 'red'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
     

@@ -28,10 +28,10 @@ class HardwareSummaryAPIView(APIView):
         total_count = accessible_queryset.count()
         recent_item = accessible_queryset.order_by('-created_at').first().name if accessible_queryset.exists() else None
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
             {'label': 'جدیدترین', 'value': recent_item, 'color': 'grey'},
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

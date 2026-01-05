@@ -253,13 +253,13 @@ class AssetInRangeSummaryAPIView(APIView):
             count=Count('id')
         ).order_by('-count').first()
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد کل دارایی‌ها', 'value': total_assets, 'color': 'blue'},
             {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.name if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
             {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
             {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
             {'label': 'پر تکرارترین دسته‌بندی', 'value': most_recent_category['category'] if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
-        }
+        ]
         
         return Response(summary_data, status=status.HTTP_200_OK)
     
