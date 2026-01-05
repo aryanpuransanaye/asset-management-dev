@@ -28,8 +28,8 @@ class SoftwareSummaryAPIView(APIView):
         total_count = accessible_queryset.count()
 
         software = accessible_queryset.aggregate(
-            license_expired_count = Count('license_expired_data', filter=Q(license_expired_data__lt=jdatetime.datetime.now().togregorian())),
-            license_not_expired_count = Count('license_expired_data', filter=Q(license_expired_data__gte=jdatetime.datetime.now().togregorian())),
+            license_expired_count = Count('license_expired_date', filter=Q(license_expired_date__lt=jdatetime.datetime.now().togregorian())),
+            license_not_expired_count = Count('license_expired_date', filter=Q(license_expired_date__gte=jdatetime.datetime.now().togregorian())),
         )
 
         last_item = accessible_queryset.order_by('-created_at').first()
@@ -189,7 +189,7 @@ class SoftWareExportAPIView(APIView):
                         value = value.organization.name
                 elif field.name == 'sub_organization' and value:
                         value = value.sub_organization.name
-                elif field.name in ['created_at', 'updated_at', 'license_expired_data']:
+                elif field.name in ['created_at', 'updated_at', 'license_expired_date'] and value:
                     value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')
 
                 row.append(value if value else '-')

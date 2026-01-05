@@ -22,6 +22,9 @@ urlpatterns = [
 
     path('scan-manualy/<int:ip_id>/', views.ScanAssetInManuallyRange.as_view(), name='scan-manualy'),
 
+    #summary
+    path('scanned-asset/summary/<int:ip_id>/', views.AssetInRangeSummaryAPIView.as_view(), name='asset-in-range-summary'),
+
     #filter
     path('scanned-asset/metdata/', views.AssetInRangeMetaDataAPIView.as_view(), name='asset-in-range-metadata'),
 

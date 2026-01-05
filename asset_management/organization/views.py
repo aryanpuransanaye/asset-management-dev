@@ -22,9 +22,9 @@ class OrganizationSummaryAPIView(APIView):
 
         total_organizations = Organization.objects.count()
 
-        summary_data = {
+        summary_data = [
             {'label': 'تعداد سازمان‌ها', 'value': total_organizations, 'color': 'blue'}
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 

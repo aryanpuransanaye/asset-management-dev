@@ -36,16 +36,11 @@ class IPManageSummaryAPIView(APIView):
         accessible_queryset = get_accessible_queryset(request, model=IPManage)
 
         total_ips = accessible_queryset.count()
-        used_ips = accessible_queryset.filter(
-            Q(discoveredasset__isnull=False)
-        ).distinct().count()
-        available_ips = total_ips - used_ips
 
-        summary_data = {
+
+        summary_data = [
             {'label': 'تعداد کل آی‌پی‌ها', 'value': total_ips, 'color': 'blue'},
-            {'label': 'آی‌پی‌های استفاده شده', 'value': used_ips, 'color': 'red'},
-            {'label': 'آی‌پی‌های در دسترس', 'value': available_ips, 'color': 'green'} 
-        }
+        ]
 
         return Response(summary_data, status=status.HTTP_200_OK)
 
@@ -255,7 +250,7 @@ class AssetInRangeSummaryAPIView(APIView):
 
         summary_data = [
             {'label': 'تعداد کل دارایی‌ها', 'value': total_assets, 'color': 'blue'},
-            {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.name if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
+            {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.mac if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
             {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
             {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
             {'label': 'پر تکرارترین دسته‌بندی', 'value': most_recent_category['category'] if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
