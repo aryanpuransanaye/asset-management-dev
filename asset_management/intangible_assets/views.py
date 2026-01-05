@@ -8,12 +8,40 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_intangible_asset_config
 
 config = get_intangible_asset_config()
+
+
+class IntangibleAssetsSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'intangible_assets'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=IntangibleAsset)
+
+        total_count = accessible_queryset.count()
+
+        intangible_asset = accessible_queryset.aggregate(
+            supplier_count = Count('supplier', distinct=True),
+            owner_count = Count('owner', distinct=True),
+        )
+
+        last_intangible_asset = accessible_queryset.order_by('-created_at').first()
+
+        summary_data = {
+            {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
+            {'label': 'تعداد تامین کننده', 'value': intangible_asset['supplier_count'], 'color': 'green'},
+            {'label': 'تعداد مالک', 'value': intangible_asset['owner_count'], 'color': 'orange'},
+            {'label': 'جدیدترین دارایی', 'value': last_intangible_asset.name if last_intangible_asset else 'دارایی ثبت نشده', 'color': 'grey'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
 
 class IntangibleAssetsMetaDataAPIView(BaseMetaDataAPIView):
 

@@ -8,13 +8,41 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_software_config
 
 config = get_software_config()
 
+
+class SoftwareSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'software'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=Software)
+
+        total_count = accessible_queryset.count()
+
+        software = accessible_queryset.aggregate(
+            license_expired_count = Count('license_expired_data', filter=Q(license_expired_data__lt=jdatetime.datetime.now().togregorian())),
+            license_not_expired_count = Count('license_expired_data', filter=Q(license_expired_data__gte=jdatetime.datetime.now().togregorian())),
+        )
+
+        last_item = accessible_queryset.order_by('-created_at').first()
+
+        summay_data = {
+            {'label': 'تعداد نرم‌افزارها', 'value': total_count, 'color': 'purple'},
+            {'label': 'مجوز منقضی شده', 'value': software['license_expired_count'], 'color': 'red'},
+            {'label': 'مجوز معتبر', 'value': software['license_not_expired_count'], 'color': 'green'},
+            {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'}
+        }
+
+        return Response(summay_data,status=status.HTTP_200_OK)
+    
 
 class SoftwareMetaDataAPIView(BaseMetaDataAPIView):
 

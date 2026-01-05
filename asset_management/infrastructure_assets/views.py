@@ -8,7 +8,7 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_infrastructure_asset_config
@@ -16,6 +16,34 @@ from .utils import get_infrastructure_asset_config
 
 config = get_infrastructure_asset_config()
 
+
+
+class InfrastructureAssetsSummaryAPIView(APIView):
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'infrastructure_assets'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=InfrastructureAssets)
+        total_count = accessible_queryset.count()
+
+        last_infrastructure_assets = accessible_queryset.order_by('-created_at').first()
+
+        inftastructure_assets = accessible_queryset.aggregate(
+            total_supplier = Count('supplier', distinct=True),
+            total_owner = Count('owner', distinct=True),
+        )
+
+        summary_data = {
+            {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
+            {'label': 'جدیدترین دارایی', 'value': last_infrastructure_assets.name if last_infrastructure_assets else 'دارایی ثبت نشده', 'color': 'grey'},
+            {'label': 'تعداد تامین کننده', 'value': inftastructure_assets['total_supplier'], 'color': 'green'},
+            {'label': 'تعداد مالک', 'value': inftastructure_assets['total_owner'], 'color': 'orange'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+    
+    
 class InfrastructureAssetsMetaDataAPIView(BaseMetaDataAPIView):
 
     model = InfrastructureAssets

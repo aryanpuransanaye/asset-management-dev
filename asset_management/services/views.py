@@ -15,6 +15,27 @@ from .utils import get_service_config
 
 config = get_service_config()
 
+
+class ServicesSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'services'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=Services)
+
+        total_services = accessible_queryset.count()
+        last_service = accessible_queryset.order_by('-created_at').first()
+
+        summary_data = {
+            {'label': 'تعداد سرویس‌ها', 'value': total_services, 'color': 'blue'},
+            {'label': 'جدیدترین', 'value': last_service.name if last_service else 'دارایی ثتب نشده', 'color': 'green'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
+
 class ServicesMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Services

@@ -16,6 +16,29 @@ from .utils import get_human_resource_config
 
 config = get_human_resource_config()
 
+
+class HumanResourcesSummaryAPIView(APIView):
+        
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'human_resources'
+
+    def get(self, request):
+        
+        accessible_queryset = get_accessible_queryset(request, model=HumanResource)
+        total_count = accessible_queryset.count()
+        recent_item = accessible_queryset.order_by('-created_at').first().full_name if accessible_queryset.exists() else None
+        person_in_charge_count = accessible_queryset.filter(Q(end_date_of_work__isnull=True) | Q(end_date_of_work__gt=jdatetime.date.today())).count()
+        
+        summary_data = {
+            {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
+            {'label': 'جدیدترین', 'value': recent_item, 'color': 'grey'},
+            {'label': 'شخص در دسترس', 'value': person_in_charge_count, 'color': 'green'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+        
+
+
 class HumanResourcesMetaDataAPIView(BaseMetaDataAPIView):
 
     model = HumanResource

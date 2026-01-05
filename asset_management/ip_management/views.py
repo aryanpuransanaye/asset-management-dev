@@ -9,7 +9,7 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 from itertools import chain
 import nmap, openpyxl, jdatetime
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponse
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
@@ -24,6 +24,31 @@ from .utils import get_discovered_asset_config, get_ip_manage_config
 
 config_ip_manage = get_ip_manage_config()
 config_discovered_asset = get_discovered_asset_config()
+
+
+class IPManageSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'ip_manage'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=IPManage)
+
+        total_ips = accessible_queryset.count()
+        used_ips = accessible_queryset.filter(
+            Q(discoveredasset__isnull=False)
+        ).distinct().count()
+        available_ips = total_ips - used_ips
+
+        summary_data = {
+            {'label': 'تعداد کل آی‌پی‌ها', 'value': total_ips, 'color': 'blue'},
+            {'label': 'آی‌پی‌های استفاده شده', 'value': used_ips, 'color': 'red'},
+            {'label': 'آی‌پی‌های در دسترس', 'value': available_ips, 'color': 'green'} 
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
 
 class IPManageMetaDataAPIView(BaseMetaDataAPIView):
 
@@ -204,6 +229,41 @@ class ScanAssetInManuallyRange(APIView):
 
 
 #asset added by scan
+
+class AssetInRangeSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'ip_manage'
+
+    def get(self, request, ip_id):
+
+        accessible_queryset = get_accessible_queryset(request, model=IPManage)
+        selected_range = get_object_or_404(accessible_queryset, id=ip_id)
+        asset_by_range = DiscoveredAsset.objects.filter(network_range = selected_range)
+
+        total_assets = asset_by_range.count()
+        last_scanned_item = asset_by_range.order_by('-created_at').first()
+
+        assets_by_category = asset_by_range.aggregate(
+            assets_category_selected = Count('id', filter=Q(category__isnull=False)),
+            assets_category_not_selected = Count('id', filter=Q(category__isnull=True)),
+        )
+
+        most_recent_category = asset_by_range.values('category').annotate(
+            count=Count('id')
+        ).order_by('-count').first()
+
+        summary_data = {
+            {'label': 'تعداد کل دارایی‌ها', 'value': total_assets, 'color': 'blue'},
+            {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.name if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
+            {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
+            {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
+            {'label': 'پر تکرارترین دسته‌بندی', 'value': most_recent_category['category'] if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
+        }
+        
+        return Response(summary_data, status=status.HTTP_200_OK)
+    
+
 
 class AssetInRangeMetaDataAPIView(BaseMetaDataAPIView):
 

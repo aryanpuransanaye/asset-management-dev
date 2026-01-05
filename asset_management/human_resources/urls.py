@@ -6,6 +6,9 @@ urlpatterns = [
     #filter
     path('human-resource/metadata/', views.HumanResourcesMetaDataAPIView.as_view(), name='human-resources-metadata'),
 
+    #summary
+    path('human-resource/summary/', views.HumanResourcesSummaryAPIView.as_view(), name='human-resources-summary'),
+
     #list
     path('human-resource/list/', views.HumanResourcesListAPIView.as_view(), name='human-resources-list'),
 

@@ -15,6 +15,26 @@ from .utils import get_place_and_area_config
 
 config = get_place_and_area_config()
 
+
+class PlacesAndAreasSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'place_and_areas'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=PlacesAndArea)
+        last_item = accessible_queryset.order_by('-created_at').first()
+
+        total_count = accessible_queryset.count()
+
+        summary_data = {
+            {'label': 'تعداد مکان‌ها و مناطق', 'value': total_count, 'color': 'purple'},
+            {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
 class PlacesAndAreasMetaDataAPIView(BaseMetaDataAPIView):
 
     model = PlacesAndArea

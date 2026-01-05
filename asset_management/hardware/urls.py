@@ -6,6 +6,8 @@ urlpatterns = [
     #filter
     path('hardware/metadata/', views.HardwareMetaDataAPIView.as_view(), name='hardware-metadata'),
 
+    #summary
+    path('hardware/summary/', views.HardwareSummaryAPIView.as_view(), name='hardware-summary'),
 
     #list
     path('hardware/list/', views.HardwareListAPIView.as_view(), name='hardware-list'),

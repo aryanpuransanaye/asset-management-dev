@@ -6,6 +6,9 @@ urlpatterns = [
     #meta data
     path('data-and-information/metadata/', views.DataInformationMetaDataAPIView.as_view(), name='data-and-information-metadata'),
 
+    #summaty
+    path('data-and-information/summary/', views.DataAndInformationSummaryAPIView.as_view(), name='data-and-information-summary'),
+
     #list
     path('data-and-information/list/', views.DataAndInformationListAPIView.as_view(), name='data-and-information-list'),
     

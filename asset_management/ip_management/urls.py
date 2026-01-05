@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+
+    #summary
+    path('ip-manage/summary/', views.IPManageSummaryAPIView.as_view(), name='ip-manage-summary'),
+
     #filter
     path('ip-manage/metdata/', views.IPManageMetaDataAPIView.as_view(), name='ip-manage'),
 

@@ -15,6 +15,23 @@ from .utils import get_supplier_config
 
 config = get_supplier_config()
 
+class SupplierSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'suppliers'
+
+    def get(self, request):
+
+        accessible_queryset = get_accessible_queryset(request, model=Supplier)
+
+        total_suppliers = accessible_queryset.count()
+        
+        summary_data = {
+            {'label': 'تعداد کل', 'value': total_suppliers, 'color': 'blue'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
 class SupplierMetaDataAPIView(BaseMetaDataAPIView):
 
     model = Supplier

@@ -8,12 +8,34 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset
 
 
-
 #ticket
+
+class TicketSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
+
+        ticket_details = accessible_queryset.aggregate(
+            total_tickets_count =  Count('id'),
+            open_tickets_count = Count('id', filter=Q(is_active=True)),
+            closed_tickets_count = Count('id', filter=Q(is_active=False)),
+        )
+
+        summary_data = {
+            {'label': 'تعداد کل تیکت‌ها', 'value': ticket_details['total_tickets_count'], 'color': 'blue'},
+            {'label': 'تیکت‌های باز', 'value': ticket_details['open_tickets_count'], 'color': 'green'},
+            {'label': 'تیکت‌های بسته شده', 'value': ticket_details['closed_tickets_count'], 'color': 'red'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+    
+
 class TicketListAPIView(APIView):
 
     permission_classes = [IsAuthenticated]

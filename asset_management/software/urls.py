@@ -3,6 +3,9 @@ from . import views
 
 urlpatterns = [
 
+    #summary
+    path('software/summary/', views.SoftwareSummaryAPIView.as_view(), name='software-summary'),
+
     #filter
     path('software/metadata/', views.SoftwareMetaDataAPIView.as_view(), name='software-metadata'),
 

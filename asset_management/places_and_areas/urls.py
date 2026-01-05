@@ -3,6 +3,9 @@ from . import views
 
 urlpatterns = [
 
+    #summary
+    path('places-and-areas/summary/', views.PlacesAndAreasSummaryAPIView.as_view(), name='places-and-areas-summary'),
+
     #filter
     path('places-and-areas/metadata/', views.PlacesAndAreasMetaDataAPIView.as_view(), name='places-and-areas-metadata'),
 

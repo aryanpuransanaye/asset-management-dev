@@ -14,6 +14,21 @@ from core.utils import apply_filters_and_sorting, get_accessible_queryset
 
 ###ORGANIZATION###
 
+class OrganizationSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        total_organizations = Organization.objects.count()
+
+        summary_data = {
+            {'label': 'تعداد سازمان‌ها', 'value': total_organizations, 'color': 'blue'}
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
+
 class OrganizationListAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -72,6 +87,20 @@ class OrganizationAPIView(APIView):
 
 
 ###SUB ORGANIZATION###
+
+class SubOrganizationSummaryAPIView(APIView):
+
+    def get(self, request, organization_id):
+
+        organization = get_object_or_404(Organization, id = organization_id)
+        total_sub_organizations = SubOrganization.objects.filter(organization=organization).count()
+
+        summary_data = {
+            {'label': 'تعداد زیرسازمان‌ها', 'value': total_sub_organizations, 'color': 'green'}
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
 
 class SubOrganizationListAPIView(APIView):
 

@@ -7,13 +7,41 @@ from . import serializers
 from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_data_and_information_config
 
 
 config = get_data_and_information_config()
+
+class DataAndInformationSummaryAPIView(APIView):
+     
+    permission_classes = [IsAuthenticated, DynamicSystemPermission]
+    base_perm_name = 'data_and_information'
+
+    def get(self, request):
+        
+        accessible_queryset = get_accessible_queryset(request, model=DataAndInformation)
+        total_count = accessible_queryset.count()
+        recent_item = accessible_queryset.order_by('-created_at').first()
+        data_and_informations  = accessible_queryset.aggregate(
+            private_count = Count('id', filter=Q(confidentiality_level='0')),
+            confidential_count =  Count('id', filter=Q(confidentiality_level='1')),
+            public_count =  Count('id', filter=Q(confidentiality_level='2')),
+        )
+
+        summary_data ={
+            {'label': 'کل', 'value': total_count, 'color': 'blue'},
+            {'label': 'جدیدترین', 'value': recent_item.name if recent_item else 'داده یا اطلاعات ثبت نشده', 'color': 'grey'},
+            {'label': 'خصوصی', 'value': data_and_informations['private_count'], 'color': 'red'},
+            {'label': 'محرمانه', 'value': data_and_informations['confidential_count'], 'color': 'orange'},
+            {'label': 'عمومی', 'value': data_and_informations['public_count'], 'color': 'green'},
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+
+
 
 class DataInformationMetaDataAPIView(BaseMetaDataAPIView):
 

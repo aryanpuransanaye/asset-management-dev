@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+
+    #summary
+    path('supplier/summary/', views.SupplierSummaryAPIView.as_view(), name='suppliers-summary'),
+
     #filter
     path('supplier/metadata/', views.SupplierMetaDataAPIView.as_view(), name='suppliers-metadata'),
 

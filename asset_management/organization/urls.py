@@ -4,6 +4,9 @@ from . import views
 urlpatterns = [
     #ORGANIZATION
 
+    #summary
+    path('organization/summary/', views.OrganizationSummaryAPIView.as_view(), name='organization-summary'),
+
     #list
     path('organization/list/', views.OrganizationListAPIView.as_view(), name='organization-list'),
 
@@ -14,6 +17,9 @@ urlpatterns = [
     path('organization/', views.OrganizationAPIView.as_view(), name='organization'),
 
     ###SUB ORGANIZATION###
+
+    #summart
+    path('sub-organization/summary/', views.SubOrganizationSummaryAPIView.as_view(), name='sub-organization-summary'),
 
     #list
     path('sub-organization/list/<int:organization_id>/', views.SubOrganizationListAPIView.as_view(), name='sub-organization-list'),
