@@ -101,7 +101,7 @@ class LogoutUserAPIView(APIView):
 class ChangePasswordAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request):
+    def patch(self, request):
         
         serializer = serializers.ChangePasswordSerializer(data=request.data, context={'request': request})
 
@@ -133,7 +133,7 @@ class ChangeUserPasswordByAdminAPIView(APIView):
 
 
 class UserProfileAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
@@ -143,7 +143,7 @@ class UserProfileAPIView(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    def put(self, request):
+    def patch(self, request):
 
         user = request.user
 
@@ -368,7 +368,7 @@ class GroupsDetailAPIView(APIView):
        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def put(self, request, group_id):
+    def patch(self, request, group_id):
 
         group = get_object_or_404(Group, id=group_id)
         

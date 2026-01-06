@@ -109,7 +109,7 @@ const fetchGroup = async () => {
 const updateGroup = async () => {
   saving.value = true
   try {
-    await api.put(`accounts/group-detail/${groupID}/`, {
+    await api.patch(`accounts/group-detail/${groupID}/`, {
       name: form.value.name
     })
     Swal.fire({

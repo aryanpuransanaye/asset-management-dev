@@ -22,7 +22,7 @@ export function useAuth() {
       // ۲. قبل از درخواست، وضعیت لودینگ را مطمئن شو که true است
       isAuthLoading.value = true
       
-      const res = await api.get('accounts/profile/')
+      const res = await api.get('accounts/user-profile/')
       
       user.value = res.data
       isAuthenticated.value = true

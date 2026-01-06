@@ -152,7 +152,7 @@ const saveChanges = async () => {
       name: groupName.value,
       permissions: groupPermissions.value.map(p => p.id) 
     }
-    await api.put(`accounts/group-detail/${groupID}/`, payload)
+    await api.patch(`accounts/group-detail/${groupID}/`, payload)
     Swal.fire('موفقیت', 'دسترسی‌ها با موفقیت به‌روزرسانی شدند.', 'success')
   } catch (err) {
     Swal.fire('خطا', 'ثبت تغییرات انجام نشد.', 'error')

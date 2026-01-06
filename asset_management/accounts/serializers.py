@@ -267,11 +267,10 @@ class GroupsUpdateSerializer(serializers.ModelSerializer):
         instance.save()
 
         if permissions_data is not None:
-            instance.permissions.add(*permissions_data)
+            instance.permissions.set(permissions_data)
 
         if users_data is not None:
-           for user in users_data:
-            user.groups.add(instance)
+           instance.custom_user_set.set(users_data)
 
         return instance
 

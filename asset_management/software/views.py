@@ -34,14 +34,14 @@ class SoftwareSummaryAPIView(APIView):
 
         last_item = accessible_queryset.order_by('-created_at').first()
 
-        summay_data = [
+        summary_data = [
             {'label': 'تعداد نرم‌افزارها', 'value': total_count, 'color': 'purple'},
             {'label': 'مجوز منقضی شده', 'value': software['license_expired_count'], 'color': 'red'},
             {'label': 'مجوز معتبر', 'value': software['license_not_expired_count'], 'color': 'green'},
             {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'}
         ]
 
-        return Response(summay_data,status=status.HTTP_200_OK)
+        return Response(summary_data,status=status.HTTP_200_OK)
     
 
 class SoftwareMetaDataAPIView(BaseMetaDataAPIView):

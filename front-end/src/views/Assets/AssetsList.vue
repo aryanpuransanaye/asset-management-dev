@@ -1,5 +1,12 @@
 <template>
   <div class="p-4" dir="rtl">
+    
+    <div v-if="summaryData && summaryData.length > 0" class="row mb-4">
+      <div class="col-12">
+        <CardLayOut :items="summaryData" />
+      </div>
+    </div>
+
     <div class="card shadow-sm border-0 mb-4 bg-light">
       <div class="card-body">
         <h6 class="mb-3 fw-bold text-secondary text-end">
@@ -166,6 +173,10 @@ import api from '@/api/axios';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
+// وارد کردن کامپوننت کارت (مطمئن شو مسیر فایل درسته)
+// import SummaryCard from './SummaryCard.vue';
+import CardLayOut from '@/components/CardLayOut.vue';
+
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -185,6 +196,7 @@ const modelPermissionKey = computed(() => {
 const crud = computed(() => auth.hasPermission(`accounts.${modelPermissionKey.value}_crud`) || auth.isAdmin);
 
 // --- متغیرها ---
+const summaryData = ref([]);
 const items = ref([]); 
 const columns = ref([]);
 const loading = ref(false);
@@ -202,18 +214,26 @@ const queryParams = reactive({
 
 const sortState = reactive({ key: null, order: 'asc' });
 
-// --- توابع کمکی ---
 const getCurrentApi = () => props.apiEndpoint || route.query.api;
 
-const goToCreatePage = () => {
-  router.push({ name: 'CreateAsset', query: { api: getCurrentApi() } });
+// دریافت اطلاعات خلاصه (کارت‌ها)
+const fetchSummaryData = async () => {
+  try {
+    const response = await api.get(`${getCurrentApi()}/summary/`);
+    // هندل کردن هر دو ساختار: لیست مستقیم یا شیء شامل summary_data
+    if (Array.isArray(response.data)) {
+      summaryData.value = response.data;
+    } else if (response.data.summary_data) {
+      summaryData.value = response.data.summary_data;
+    } else if (response.data.summay_data) { // برای غلط املایی احتمالی در بک‌ند
+      summaryData.value = response.data.summay_data;
+    }
+  } catch (error) {
+    console.error("Summary error:", error);
+    summaryData.value = [];
+  }
 };
 
-const goToUpdatePage = (id) => {
-  router.push({ name: 'CreateAsset', query: { api: getCurrentApi(), id: id } });
-};
-
-// --- مدیریت داده‌ها ---
 const fetchData = async () => {
   loading.value = true;
   try {
@@ -248,21 +268,21 @@ const fetchMetadata = async () => {
 const handleDelete = async (id = null) => {
   const idsToDelete = id ? [id] : selectedIds.value;
   if (!idsToDelete.length || !confirm(id ? "حذف شود؟" : `${idsToDelete.length} مورد حذف شوند؟`)) return;
-
   try {
     await api.delete(`${getCurrentApi()}/`, { data: { ids: idsToDelete } });
     selectedIds.value = [];
     fetchData();
+    fetchSummaryData();
   } catch (error) {
     alert("خطا در حذف.");
   }
 };
 
-// --- واچرز و فیلترها ---
 watch(() => [props.apiEndpoint, route.query.api], () => {
   resetFilters();
   fetchMetadata();
   fetchData();
+  fetchSummaryData();
 });
 
 watch(() => queryParams.q, () => {
@@ -276,7 +296,6 @@ const filteredSubOrgs = computed(() => {
 });
 
 const isAllSelected = computed(() => items.value.length > 0 && selectedIds.value.length === items.value.length);
-
 const handleFilterChange = () => { queryParams.page = 1; fetchData(); };
 const handleOrgChange = () => { queryParams.sub_organization = null; handleFilterChange(); };
 const changePage = (p) => { queryParams.page = p; fetchData(); };
@@ -290,22 +309,13 @@ const handleSort = (key) => {
 };
 
 const resetFilters = () => {
-  // ۱. پاک کردن متن جستجو
   queryParams.q = '';
-
-  // ۲. نال کردن تمام فیلترهای داینامیک (به جز صفحه و جستجو)
-  Object.keys(queryParams).forEach(key => { 
-    if (!['page', 'q'].includes(key)) queryParams[key] = null; 
-  });
-
-  // ۳. برگرداندن مرتب‌سازی به حالت پیش‌فرض (اختیاری اما توصیه می‌شود)
+  Object.keys(queryParams).forEach(key => { if (!['page', 'q'].includes(key)) queryParams[key] = null; });
   queryParams.sort_by = '-created_at';
   sortState.key = null;
   sortState.order = 'asc';
-
-  // ۴. مهم‌ترین بخش: برگرداندن به صفحه ۱ و فراخوانی مجدد داده‌ها
   queryParams.page = 1;
-  fetchData(); 
+  fetchData();
 };
 
 const exportData = async () => {
@@ -325,7 +335,14 @@ const exportData = async () => {
   }
 };
 
-onMounted(() => { fetchMetadata(); fetchData(); });
+const goToCreatePage = () => router.push({ name: 'CreateAsset', query: { api: getCurrentApi() } });
+const goToUpdatePage = (id) => router.push({ name: 'CreateAsset', query: { api: getCurrentApi(), id: id } });
+
+onMounted(() => { 
+  fetchMetadata(); 
+  fetchData(); 
+  fetchSummaryData(); 
+});
 </script>
 
 <style scoped>
@@ -333,6 +350,6 @@ onMounted(() => { fetchMetadata(); fetchData(); });
 th:hover { background-color: #f1f1f1; }
 .table-active { background-color: rgba(13, 110, 253, 0.05) !important; }
 .table th, .table td { text-align: right !important; }
-.input-group-text { border-radius: 0 0.375rem 0.375rem 0 !important; }
-input.form-control { border-radius: 0.375rem 0 0 0.375rem !important; }
+/* استایل برای چک‌باکس که در کد شما کلاسش form-input بود و اصلاح شد */
+.form-check-input { cursor: pointer; }
 </style>

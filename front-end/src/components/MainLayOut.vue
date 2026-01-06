@@ -82,7 +82,7 @@
               <ul v-show="assetsMenuOpen" class="nav flex-column ms-3 mt-1 submenu-list">
                 <li class="nav-item">
                   <router-link 
-                    class="nav-link submenu-link" v-if="auth.canSeeAssets"
+                    class="nav-link submenu-link" v-if="auth.canSeeAssets('data_and_information')"
                     :to="{ name: 'AssetsList', query: { api: 'asset/data-and-information', permission_name: 'data_and_information' } }"
                   >
                     <i class="bi bi-dot me-1"></i> داده و اطلاعات
@@ -91,7 +91,7 @@
 
                 <li class="nav-item">
                   <router-link 
-                    class="nav-link submenu-link"
+                    class="nav-link submenu-link" v-if="auth.canSeeAssets('hardware')"
                     :to="{ name: 'AssetsList', query: { api: 'asset/hardware' } }"
                   >
                     <i class="bi bi-dot me-1"></i> سخت‌افزار

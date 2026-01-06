@@ -202,7 +202,7 @@ const saveChanges = async () => {
       users: groupUsers.value.map(u => u.id)
     }
     
-    await api.put(`accounts/group-detail/${groupID}/`, payload)
+    await api.patch(`accounts/group-detail/${groupID}/`, payload)
     
     await Swal.fire({
       icon: 'success',

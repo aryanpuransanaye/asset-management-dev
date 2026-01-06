@@ -25,16 +25,28 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('refresh_token');
     }
   },
-
+  
   getters: {
-
-    canSeeAssets: (state) => {
-      if (state.user?.is_staff) return true;
-
-      return state.userPermissions.some(p =>
-        p.includes('_crud') || p.includes('_r')
-      )
+    
+    isAdmin: (state) => {
+        return state.user?.is_superuser || state.user?.is_staff || state.userPermissions.includes('*');
     },
+    
+    canSeeAssets: (state) => (asset_name) => {
+      // ۱. اول چک کردن ادمین (مستقیماً از روی استیت برای اطمینان)
+      if (state.isAdmin) return true;
+    
+      // ۲. چک کردن پرمیشن‌های خاص
+      const prefix = asset_name;
+      // حتماً چک کن که userPermissions وجود داشته باشد که ارور undefined نگیری
+      const perms = state.userPermissions || []; 
+
+      const hasR = perms.includes(`accounts.${prefix}_r`);
+      const hasCrud = perms.includes(`accounts.${prefix}_crud`);
+
+      return hasR || hasCrud;
+    },
+
     // اصلاح شده برای پشتیبانی از "*" و فلگ‌های ادمین
     hasPermission: (state) => (permission) => {
         // ۱. چک کردن ستاره (خروجی جدید بک‌اِند تو برای سوپریوزر)
@@ -47,9 +59,6 @@ export const useAuthStore = defineStore('auth', {
         return state.userPermissions.includes(permission);
     },
     
-    isAdmin: (state) => {
-        return state.user?.is_superuser || state.user?.is_staff || state.userPermissions.includes('*');
-    }
   },
 
   persist: true, // حتماً مطمئن شو پلاگین مربوطه را در main.js نصب کرده‌ای
