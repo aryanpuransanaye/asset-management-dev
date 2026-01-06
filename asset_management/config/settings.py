@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from datetime import timedelta
 
@@ -112,10 +113,14 @@ CORS_ALLOWED_ORIGINS = [
 
 ROOT_URLCONF = 'config.urls'
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = os.path.join(BASE_DIR.parent, 'front-end', 'dist')
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [FRONTEND_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -125,6 +130,11 @@ TEMPLATES = [
             ],
         },
     },
+]
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(FRONTEND_DIR, 'assets'),
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
