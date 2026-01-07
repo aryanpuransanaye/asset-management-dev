@@ -19,6 +19,8 @@ urlpatterns = [
     path('access-level/', views.AccessLevelAPIView.as_view(), name='access-level'),
     path('access-level/change/<int:access_id>/', views.AccessLevelAPIView.as_view(), name='access-level'),
 
+
+    path('user-summary/', views.UserSummaryAPIView.as_view(), name='user-summary'),
     path('users-list/', views.UserListAPIView.as_view(), name='user-list'),
     path('user-detail/<int:user_id>/', views.UserDetailAPIView.as_view(), name='user-detail'),
     path('user-detail/', views.UserDetailAPIView.as_view(), name='user-detail'),

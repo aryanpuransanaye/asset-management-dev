@@ -16,7 +16,7 @@ from django.contrib.auth import authenticate
 from django.db.models import Q, Count
 import random, openpyxl, jdatetime
 from django.http import HttpResponse
-from core.utils import apply_filters_and_sorting
+from core.utils import apply_filters_and_sorting, get_accessible_queryset
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -264,6 +264,30 @@ class UserDetailAPIView(APIView):
         )
     
 
+class UserSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
+
+    def get(self, request):
+
+        accessibe_users = get_accessible_queryset(request, User, 'access_level')
+
+        users_summary = accessibe_users.aggregate(
+            total_count = Count('id'),
+            active_count = Count('id', filter=Q(is_active=True)),
+            diactive_count = Count('id', filter=Q(is_active=False)),
+            admin_count = Count('id', filter=Q(is_staff=True)),
+        )
+
+        summary_data = [
+            {'label': 'کل کاربران', 'count': users_summary['total_count']},
+            {'label': 'کاربران فعال', 'count': users_summary['active_count']},
+            {'label': 'کاربران غیرفعال', 'count': users_summary['diactive_count']},
+            {'label': 'کاربران ادمین', 'count': users_summary['admin_count']},
+        ]
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+    
 
 class UserListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
@@ -399,7 +423,7 @@ class ExportUserAPIView(APIView):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.sheet_view.rightToLeft = True
-        ws.title = 'کاربان'
+        ws.title = 'کاربران'
 
         exclude_fields = ['password', 'otp_code', 'otp_created_at', 'date_joined']
         fields = [field for field in User._meta.fields if field.name not in exclude_fields]
@@ -419,6 +443,9 @@ class ExportUserAPIView(APIView):
                 elif field.name == 'access_level' and value:
                     value = value.level_name
                 
+                elif field.name == 'active_directory' and value:
+                    value = value.username
+
                 elif field.name in ['created_at', 'updated_at', 'last_login'] and value:
                     try:
                         value = jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M')

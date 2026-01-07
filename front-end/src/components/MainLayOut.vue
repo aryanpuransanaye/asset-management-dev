@@ -92,7 +92,7 @@
                 <li class="nav-item">
                   <router-link 
                     class="nav-link submenu-link" v-if="auth.canSeeAssets('hardware')"
-                    :to="{ name: 'AssetsList', query: { api: 'asset/hardware' } }"
+                    :to="{ name: 'AssetsList', query: { api: 'asset/software' } }"
                   >
                     <i class="bi bi-dot me-1"></i> سخت‌افزار
                   </router-link>

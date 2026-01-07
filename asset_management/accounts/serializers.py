@@ -3,7 +3,8 @@ from .models import User, AccessLevel
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
+import jdatetime
+from .utils import get_client_ip
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -17,9 +18,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         all_perms = self.user.get_all_permissions()
         data['permissions'] = [p for p in all_perms if p.startswith('accounts.')] if not data['is_superuser'] else ['*']
+
+        user = self.user
+        user.ip_login = get_client_ip(request=self.context.get('request'))
+        user.last_login = jdatetime.date.today()
+        user.save(update_fields=['ip_login', 'last_login'])
         
         return data
-
+    
 
 class AccessLevelSerliazlizer(serializers.ModelSerializer):
     class Meta:
