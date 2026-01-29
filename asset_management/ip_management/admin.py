@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DiscoveredAsset, IPManage
+from .models import DiscoveredAsset, IPManage, ScanHistory
 # Register your models here.
 
 @admin.register(DiscoveredAsset)
@@ -9,3 +9,8 @@ class DiscoveredAssetAdmin(admin.ModelAdmin):
 @admin.register(IPManage)
 class IPManageAdmin(admin.ModelAdmin):
     list_display = ['id', 'name', 'ipaddress', 'subnet', 'vlan']
+
+
+@admin.register(ScanHistory)
+class ScanHistoryAdmin(admin.ModelAdmin):
+    list_display = ['id', 'status', 'created_at', 'finished_at', 'network_range', 'result_count']

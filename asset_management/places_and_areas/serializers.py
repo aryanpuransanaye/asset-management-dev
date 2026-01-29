@@ -23,6 +23,5 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = PlacesAndArea
         fields = [
-            'organization', 'sub_organization',
            'location', 'usage', 'owner', 'name',
         ] + BASE_CREATE_UPDATE_FIELDS

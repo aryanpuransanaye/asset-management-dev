@@ -23,7 +23,6 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = IntangibleAsset
         fields = [
-            'organization', 'sub_organization',
             'supplier','location', 'usage', 'owner', 'name',
         ] + BASE_CREATE_UPDATE_FIELDS
 

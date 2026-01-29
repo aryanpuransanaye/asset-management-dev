@@ -13,6 +13,7 @@ from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_p
 from core.permissions import DynamicSystemPermission
 from .utils import get_supplier_config
 
+
 config = get_supplier_config()
 
 class SupplierSummaryAPIView(APIView):
@@ -156,9 +157,9 @@ class SupplierExportAPIView(APIView):
         ws = wb.active
         ws.title = 'تامین کنندگان'
 
-        fields = Supplier._meta.fields
+        fields = [field for field in Supplier._meta.fields if field.name != 'id']
 
-        header = [field.verbose_name for field in fields]
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in suppliers:

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ActiveDirectory
+from .models import ActiveDirectory, ActiveDirectoryUsers
 from accounts.models import User
 
 # class ListSerializer(serializers.ModelSerializer):
@@ -41,7 +41,7 @@ class CreateScannedADUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
     
-        user = User.objects.create_user(**validated_data)
+        user = ActiveDirectoryUsers.objects.create_user(**validated_data)
         user.set_unusable_password()
         user.save()
         return user

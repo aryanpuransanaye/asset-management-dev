@@ -1,26 +1,18 @@
 from rest_framework import permissions
 from rest_framework.permissions import IsAuthenticated
-from .models import IPManage, DiscoveredAsset
-from data_and_information.models import DataAndInformation
+from .models import IPManage, DiscoveredAsset, ScanHistory
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
 from django.shortcuts import get_object_or_404
 from itertools import chain
-import nmap, openpyxl, jdatetime
+import nmap, openpyxl, jdatetime, ipaddress, threading
 from django.db.models import Q, Count
 from django.http import HttpResponse
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
-from hardware.models import Hardware
-from software.models import Software
-from services.models import Services
-from places_and_areas.models import PlacesAndArea
-from infrastructure_assets.models import InfrastructureAssets
-from intangible_assets.models import IntangibleAsset
-from supplier.models import Supplier
-from .utils import get_discovered_asset_config, get_ip_manage_config
+from .utils import get_discovered_asset_config, get_ip_manage_config, start_scanning
 
 config_ip_manage = get_ip_manage_config()
 config_discovered_asset = get_discovered_asset_config()
@@ -64,20 +56,20 @@ class IPListAPIView(APIView):
             config_ip_manage['sorting'], 
             config_ip_manage['filters'], 
             config_ip_manage['search'], 
-            session_key='hardware', 
+            session_key='ipmanage', 
             model=IPManage
         ).select_related('user', 'access_level')
 
-
         paginator = set_paginator(request, ips)
         serializer = serializers.IPByUserListSerializer(paginator['data'], many=True)
-        # columns = serializers.ListSerializer.get_active_columns()
+        columns = serializers.IPByUserListSerializer.get_active_columns()
+        
         return Response({
             'results':serializer.data,
             'total_pages': paginator['total_pages'],
             'current_page': paginator['current_page'],
             'total_items': paginator['total_items'],
-            # 'columns': columns
+            'columns': columns
         }, status=status.HTTP_200_OK)
 
 
@@ -144,84 +136,25 @@ class IPManageAPIVIEW(APIView):
 class ScanAssetInManuallyRange(APIView):
     permission_classes = [IsAuthenticated]
 
+
+    def get(self, request, ip_id):
+        scan_record = get_object_or_404(ScanHistory, network_range_id=ip_id)
+        print(scan_record.status)
+        return Response({
+            'status': scan_record.status,
+            'result_count': scan_record.result_count
+        }, status=status.HTTP_200_OK)
+    
+
     def post(self, request, ip_id):
-        
-        models_with_ip = [
-            DiscoveredAsset, DataAndInformation, Software,
-            Hardware, Services, PlacesAndArea, InfrastructureAssets,
-            IntangibleAsset, Supplier
-        ]
-
-        existing_ips = set(
-            ip for ip in chain.from_iterable(
-                m.objects.values_list('ipaddress', flat=True)
-                for m in models_with_ip
-            ) if ip
+        thread = threading.Thread(
+            target=start_scanning,
+            args=(ip_id, request.user, request.user.access_level)
         )
-
+        thread.start()
         
-        selected_range = get_object_or_404(IPManage, id=ip_id)
-        ip_target = f'{selected_range.ipaddress}/{selected_range.subnet}'
-
-        nm = nmap.PortScanner()
-        try:
-            nm.scan(hosts=ip_target, arguments='-sn -T4')
-        except Exception as e:
-            return Response({'error': f'اسکن با خطا مواجه شد: {str(e)}'}, status=500)
-
-        alive_hosts = [
-            ip for ip in nm.all_hosts()
-            if nm[ip]['status']['state'] == 'up' and ip not in existing_ips
-        ]
-
-        if not alive_hosts:
-            return Response({'message': "آی‌پی جدیدی در این رنج پیدا نشد."}, status=200)
-        
-        new_assets_data = []
-
-        for ip in alive_hosts:
-            try:
-                nm.scan(hosts=ip, arguments='-O -T4')
-                host = nm[ip]
-            except Exception:
-                continue
-
-            mac = host.get('addresses', {}).get('mac', None)
-            os_type = None
-            vendor = None
-
-            osinfo = host.get('osmatch', [])
-            if osinfo:
-                os_type = osinfo[0].get('name', None)
-                osclass = osinfo[0].get('osclass', [])
-                if osclass:
-                    vendor = osclass[0].get('vendor', None)
-
-            if mac is not None and mac in host.get('vendor', {}):
-                vendor = host['vendor'][mac]
-     
-            asset_data = {
-                'network_range': selected_range.id,
-                'ipaddress': ip,
-                'mac': mac,
-                'os': os_type,
-                'vendor': vendor,
-                'access_level': request.user.access_level.id if hasattr(request.user, 'access_level') and request.user.access_level else None,
-                'user': request.user.id
-            }
-            new_assets_data.append(asset_data)
-
-        serializer = serializers.CreateScannedAssetSerializer(data=new_assets_data, many=True)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                'message': f'تعداد {len(new_assets_data)} دارایی جدید شناسایی و ثبت شد.',
-                'detected_ips': alive_hosts
-            }, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        # perform_scan_task.delay(ip_id,request)
+        return Response({'message': 'اسکن شروع شد'}, status=status.HTTP_202_ACCEPTED)
 
 #asset added by scan
 
@@ -248,12 +181,18 @@ class AssetInRangeSummaryAPIView(APIView):
             count=Count('id')
         ).order_by('-count').first()
 
+        network = ipaddress.IPv4Network(f'{selected_range.ipaddress}/{selected_range.subnet}', strict=False)
+        total_hosts = max(0, network.num_addresses - 2)
+        used_hosts = len(asset_by_range)
+
         summary_data = [
             {'label': 'تعداد کل دارایی‌ها', 'value': total_assets, 'color': 'blue'},
             {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.mac if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
             {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
             {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
             {'label': 'پر تکرارترین دسته‌بندی', 'value': most_recent_category['category'] if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
+            {'label': 'همه ip ها', 'value': total_hosts, 'color': 'red'},
+            {'label': 'ip های استفاده شده', 'value': used_hosts, 'color': 'red'},
         ]
         
         return Response(summary_data, status=status.HTTP_200_OK)
@@ -283,22 +222,20 @@ class AssetInRangeListAPIView(APIView):
             config_discovered_asset['sorting'], 
             config_discovered_asset['filters'], 
             config_discovered_asset['search'], 
-            session_key='hardware', 
+            session_key='scanned_asset', 
             query_set=asset_by_range
-        ).select_related(
-            'user', 
-            'access_level'
-        )
+        ).select_related('user', 'access_level')
 
         paginator = set_paginator(request, assets)
         serializer = serializers.AssetInManualyRangeListSerializer(paginator['data'], many=True)
-        # columns = serializers.ListSerializer.get_active_columns()
+
+        columns = serializers.AssetInManualyRangeListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
             'total_pages': paginator['total_pages'],
             'current_page': paginator['current_page'],
             'total_items': paginator['total_items'],
-            # 'columns': columns
+            'columns': columns
         }, status=status.HTTP_200_OK)
 
 
@@ -308,12 +245,19 @@ class AssetInRagneAPIView(APIView):
     base_perm_name = 'ip_manage'
 
     def get(self, request, ip_id):
-
-        accessible_queryset = get_accessible_queryset(request, model=DiscoveredAsset)
-        selected_asset = get_object_or_404(accessible_queryset, id= ip_id)
-        serializer = serializers.AssetInManualyRangeDetail(selected_asset)
         
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        config_form = serializers.AssetInManualyRangeUpdate.get_form_config()
+        # print(config_form.data)
+
+        if ip_id:
+            accessible_queryset = get_accessible_queryset(request, model=DiscoveredAsset)
+            selected_asset = get_object_or_404(accessible_queryset, id= ip_id)
+            serializer = serializers.AssetInManualyRangeDetail(selected_asset)
+            print(serializer.data)
+        return Response({
+            'result':serializer.data if ip_id else {},
+            'config_form': config_form
+            }, status = status.HTTP_200_OK)
     
     
     def patch(self, request, ip_id):
@@ -373,16 +317,15 @@ class AssetInRangeExportAPIView(APIView):
         ws.title = 'دارایی های اسکن شد'
         ws.sheet_view.rightToLeft = True
 
-        fields = discovered_assets.model._meta.fields
-
-        header = [field.verbose_name for field in fields]
+        fields = [field for field in discovered_assets.model._meta.fields if field.name != 'id']
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in discovered_assets:
             row = []
             for field in fields:
                 value = getattr(thing, field.name)
-
+                
                 if field.name == 'user' and value:
                     value = value.username
                 elif field.name == 'access_level' and value:

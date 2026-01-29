@@ -19,16 +19,17 @@ class IPManage(models.Model):
 
     
 class DiscoveredAsset(models.Model):
+    
     CATEGORY_CHOICES = [
-        ('0', 'داده و اطلاعات'),
-        ('1', 'نرم افزار'),
-        ('2', 'سرویس'),
-        ('3', 'سخت افزار'),
-        ('4', 'اماکن و محوطه'),
-        ('5', 'منابع انسانی'),
-        ('6', 'دارایی های زیر ساخت'),
-        ('7', 'دارایی های نامشهود'),
-        ('8', 'تامین کنندگان'),
+        ('data-and-information', 'داده و اطلاعات'),
+        ('software', 'نرم افزار'),
+        ('services', 'سرویس'),
+        ('hardware', 'سخت افزار'),
+        ('places-and-areas', 'اماکن و محوطه'),
+        ('human-resource', 'منابع انسانی'),
+        ('infrastructure-asset', 'دارایی های زیر ساخت'),
+        ('intangible-asset', 'دارایی های نامشهود'),
+        ('supplier', 'تامین کنندگان'),
     ]
 
     network_range = models.ForeignKey(
@@ -51,3 +52,28 @@ class DiscoveredAsset(models.Model):
 
     def __str__(self):
         return f"{self.ipaddress} - {self.vendor or 'Unknown'}"
+    
+
+class ScanHistory(models.Model):
+
+    STATUS_CHOICES = [
+        ('running', 'در حال اجرا'),
+        ('finished', 'تکمیل شده'),
+        ('failied', 'ناموفق'),
+    ]
+
+    network_range = models.ForeignKey(
+        IPManage, 
+        on_delete=models.CASCADE, 
+        related_name='scan_history', 
+        null=True, 
+        blank=True, 
+        verbose_name='محدوده شبکه'
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='کاربر')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='running', verbose_name='وضعیت')
+    result_count = models.IntegerField(default=0, verbose_name="تعداد یافته‌ها")
+    created_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ ایجاد')
+    finished_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ پایان')
+    error_message = models.TextField(blank=True, null=True, verbose_name="پیام خطا")

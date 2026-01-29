@@ -161,9 +161,8 @@ class HardwareExportAPIView(APIView):
         ws = wb.active
         ws.title = 'سخت افزار'
 
-        fields = Hardware._meta.fields
-
-        header = [field.verbose_name for field in fields]
+        fields = [field for field in Hardware._meta.fields if field.name != 'id']
+        header = header = [field.verbose_name for field in fields]
         ws.sheet_view.rightToLeft = True
         ws.append(header)
         

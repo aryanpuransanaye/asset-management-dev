@@ -158,9 +158,11 @@ class UserProfileAPIView(APIView):
 
 class AccessLevelAPIView(APIView):
 
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
+
     def get(self, request):
 
-        access_levels = AccessLevel.objects.all()
+        access_levels = get_accessible_queryset(request, model=AccessLevel)
 
         serializer = serializers.AccessLevelSerliazlizer(access_levels, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -295,21 +297,10 @@ class UserListAPIView(APIView):
     def get(self, request):
         
         sorting_fields = ['created_at', '-created_at', 'name', '-name', 'username', '-username']
-        applied_filters = ['access_level', 'groups', 'user_permissions', 'gender']
+        applied_filters = ['groups', 'user_permissions', 'gender']
         searching_fields = ['username', 'email', 'first_name', 'last_name', 'phone_number']
         users = apply_filters_and_sorting(request, sorting_fields, applied_filters, searching_fields, session_key='user', model=User)
         
-        search_by = request.GET.get('q', '')
-        if search_by:
-            users = users.filter(
-                Q(username__icontains=search_by) |
-                Q(email__icontains=search_by) |
-                Q(first_name__icontains=search_by) |
-                Q(last_name__icontains=search_by) |
-                Q(phone_number__icontains=search_by)
-            )
-        
-
         
         serializer = serializers.UserSerializer(users, many=True)
         
@@ -418,7 +409,7 @@ class ExportUserAPIView(APIView):
 
         sorted_by = request.session.get('user_sorted_by', 'created_at')
         filters = request.session.get('user_applied_filters', {})
-        users = User.objects.all().filter(**filters).order_by(sorted_by)
+        users = User.objects.all()
 
         wb = openpyxl.Workbook()
         ws = wb.active

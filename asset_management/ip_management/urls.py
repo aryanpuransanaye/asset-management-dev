@@ -7,7 +7,7 @@ urlpatterns = [
     path('ip-manage/summary/', views.IPManageSummaryAPIView.as_view(), name='ip-manage-summary'),
 
     #filter
-    path('ip-manage/metdata/', views.IPManageMetaDataAPIView.as_view(), name='ip-manage'),
+    path('ip-manage/metadata/', views.IPManageMetaDataAPIView.as_view(), name='ip-manage-metadata'),
 
     #ip list
     path('ip-manage/list/', views.IPListAPIView.as_view(), name='ip-list'),
@@ -23,19 +23,19 @@ urlpatterns = [
     path('scan-manualy/<int:ip_id>/', views.ScanAssetInManuallyRange.as_view(), name='scan-manualy'),
 
     #summary
-    path('scanned-asset/summary/<int:ip_id>/', views.AssetInRangeSummaryAPIView.as_view(), name='asset-in-range-summary'),
+    path('scanned-asset/<int:ip_id>/summary/', views.AssetInRangeSummaryAPIView.as_view(), name='asset-in-range-summary'),
 
     #filter
-    path('scanned-asset/metdata/', views.AssetInRangeMetaDataAPIView.as_view(), name='asset-in-range-metadata'),
+    path('scanned-asset/metadata/', views.AssetInRangeMetaDataAPIView.as_view(), name='asset-in-range-metadata'),
 
     #asset list
-    path('scanned-asset/list/<int:ip_id>/', views.AssetInRangeListAPIView.as_view(), name='asset-in-range-list'),
+    path('scanned-asset/<int:ip_id>/list/', views.AssetInRangeListAPIView.as_view(), name='asset-in-range-list'),
 
     #detail and update
     path('scanned-asset/<int:ip_id>/', views.AssetInRagneAPIView.as_view(), name='ip-range-list'),
     #delete
-    path('scanned-asset/delete/', views.AssetInRagneAPIView.as_view(), name='ip-range-list'),
+    path('scanned-asset/', views.AssetInRagneAPIView.as_view(), name='ip-range-list'),
 
 
-    path('ip-range/export/<int:ip_id>/', views.AssetInRangeExportAPIView.as_view(), name='ip-range-export'),
+    path('scanned-asset/<int:ip_id>/export/', views.AssetInRangeExportAPIView.as_view(), name='ip-range-export'),
 ]

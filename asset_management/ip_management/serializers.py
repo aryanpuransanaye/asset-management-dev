@@ -4,6 +4,7 @@ from data_and_information.models import DataAndInformation
 from software.models import Software
 from services.models import Services
 from hardware.models import Hardware
+from human_resources.models import HumanResource
 from places_and_areas.models import PlacesAndArea
 from infrastructure_assets.models import InfrastructureAssets
 from intangible_assets.models import IntangibleAsset
@@ -28,22 +29,27 @@ class IPByUserListSerializer(serializers.ModelSerializer):
             return jdatetime.datetime.fromgregorian(datetime=obj.created_at).strftime('%Y/%m/%d %H:%M')
         return None
     
-    @staticmethod
-    def get_metadata():
-        return {
-            'filters': [
-                {'key': 'subnet', 'label': 'ساب نت', 'type': 'select', 'data_source': 'subnets'},
-                {'key': 'vlan', 'label': 'ساب نت', 'type': 'select', 'data_source': 'vlans'},
-                {'key': 'access_level', 'label': '', 'type': 'select', 'data_source': 'access_levels'},
-            ],
-            'sorting': [
-                {'key': 'created_at', 'label': 'تاریخ (صعودی)'},
-                {'key': '-created_at', 'label': 'تاریخ (صعودی)'},
-                {'key': 'ipaddress', 'label': 'آدرس آی پی'},
-                {'key': 'vlan', 'label': 'VLAN'}
-            ],
-            'searching': ['name', 'ipaddress']
-        }
+    @classmethod
+    def get_active_columns(cls):
+       
+        model = cls.Meta.model
+        target_fields = getattr(cls.Meta, 'fields', [])
+        
+        columns = []
+        for field_name in target_fields:
+            try:
+              
+                label = model._meta.get_field(field_name).verbose_name
+            except:
+                label = field_name.replace('_', ' ').capitalize()
+            
+            columns.append({
+                'key': field_name,
+                'label': label
+            })
+            
+        return columns
+    
 
 
 class IpByUserDetailSerializer(serializers.ModelSerializer):
@@ -54,7 +60,7 @@ class IpByUserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPManage
         fields = [
-            'name', 'ipaddress', 'subnet', 'vlan'
+            'name', 'ipaddress', 'subnet', 'vlan', 'access_level', 'username'
         ]
 
 
@@ -85,7 +91,7 @@ class IpByUserCreateUpdateSerializer(serializers.ModelSerializer):
 
         for field_name in fields_to_create:
           
-            if field_name in ['id', 'user', 'access_level', 'created_at', 'updated_at']:
+            if field_name in ['id', 'created_at', 'updated_at']:
                 continue
 
             try:
@@ -147,6 +153,28 @@ class AssetInManualyRangeListSerializer(serializers.ModelSerializer):
             return jdatetime.datetime.fromgregorian(datetime=obj.created_at).strftime('%Y/%m/%d %H:%M')
         return None
     
+    @classmethod
+    def get_active_columns(cls):
+       
+        model = cls.Meta.model
+        target_fields = getattr(cls.Meta, 'fields', [])
+        
+        columns = []
+        for field_name in target_fields:
+            try:
+              
+                label = model._meta.get_field(field_name).verbose_name
+            except:
+                label = field_name.replace('_', ' ').capitalize()
+            
+            columns.append({
+                'key': field_name,
+                'label': label
+            })
+            
+        return columns
+    
+    
     
 
 class AssetInManualyRangeDetail(serializers.ModelSerializer):
@@ -163,34 +191,47 @@ class AssetInManualyRangeDetail(serializers.ModelSerializer):
         ]
 
 class AssetInManualyRangeUpdate(serializers.ModelSerializer):
+    # این فیلد را داینامیک در متد update پر می‌کنیم
+    target_object_id = serializers.ReadOnlyField()
 
     class Meta:
         model = DiscoveredAsset
         fields = [
-            'ipaddress', 'os', 'mac', 'vendor', 'category'
+            'ipaddress', 'os', 'mac', 'vendor', 'category', 'target_object_id'
         ]
 
     def update(self, instance, validated_data):
+
+        instance.ipaddress = validated_data.get('ipaddress', instance.ipaddress)
+        instance.os = validated_data.get('os', instance.os)
+        instance.mac = validated_data.get('mac', instance.mac)
+        instance.vendor = validated_data.get('vendor', instance.vendor)
         
-        category = validated_data.pop('category', None)
-        if category:
+        category = validated_data.get('category')
+        if category is not None:
             instance.category = category
-            instance.save()
 
+        instance.save()
+
+        created_target_id = None
+
+        if category:
             DESTINATION_MAP = {
-                '0': DataAndInformation,
-                '1': Software,
-                '2': Services,
-                '3': Hardware,
-                '4': PlacesAndArea,
-                '5': InfrastructureAssets,
-                '6': IntangibleAsset,
-                '7': Supplier
+                'data-and-information': DataAndInformation,
+                'software': Software,
+                'services': Services,
+                'hardware': Hardware,
+                'places-and-areas': PlacesAndArea,
+                'human-resource': HumanResource,
+                'infrastructure-asset': InfrastructureAssets,
+                'intangible-asset': IntangibleAsset,
+                'supplier': Supplier
             }
-
-            target_model = DESTINATION_MAP.get(category)
-            if target_model:
-                target_model.objects.create(
+            
+            target_model_class = DESTINATION_MAP.get(category)
+            
+            if target_model_class:
+                new_asset = target_model_class.objects.create(
                     ipaddress=instance.ipaddress,
                     mac=instance.mac,
                     os=instance.os,
@@ -198,8 +239,47 @@ class AssetInManualyRangeUpdate(serializers.ModelSerializer):
                     user=instance.user,
                     access_level=instance.access_level,
                 )
-              
+                
+                created_target_id = new_asset.id
+                
                 # instance.delete()
-                return instance 
 
-        return super().update(instance, validated_data)
+        if created_target_id:
+            setattr(instance, 'target_object_id', created_target_id)
+
+        return instance
+    
+    @classmethod
+    def get_form_config(cls):
+       
+        config = []
+        model = cls.Meta.model
+        fields_to_create = getattr(cls.Meta, 'fields', [])
+        for field_name in fields_to_create:
+          
+            if field_name in ['id', 'created_at', 'updated_at']:
+                continue
+
+            try:
+                model_field = model._meta.get_field(field_name)
+                field_data = {
+                    'key': field_name,
+                    'label': model_field.verbose_name,
+                    'required': not model_field.blank,
+                    'type': model_field.get_internal_type(),
+                }
+
+                if model_field.choices:
+                    field_data['type'] = 'ChoiceField'
+                    field_data['options'] = [
+                        {'value': k, 'label': v} for k, v in model_field.choices
+                    ]
+                
+                elif model_field.is_relation:
+                    field_data['type'] = 'ForeignKey'
+
+                config.append(field_data)
+            except:
+                continue
+
+        return config

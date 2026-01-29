@@ -159,7 +159,7 @@ class ServicesExportAPIView(APIView):
         ws = wb.active
         ws.title = 'سرویس ها'
 
-        fields = Services._meta.fields
+        fields = [field for field in Services._meta.fields if field.name != 'id']
 
         header = [field.verbose_name for field in fields]
         ws.append(header)

@@ -169,9 +169,9 @@ class SoftWareExportAPIView(APIView):
         ws.title = 'نرم افزار'
         ws.sheet_view.rightToLeft = True
         
-        fields = Software._meta.fields
+        fields = [field for field in Software._meta.fields if field.name != 'id']
 
-        header = [field.verbose_name for field in fields]
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in softwares:

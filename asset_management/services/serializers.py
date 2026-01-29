@@ -23,6 +23,5 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = Services
         fields = [
-            'organization', 'sub_organization',
             'hardware_location', 'port', 'related_property', 'build_number_os', 'name',
         ] + BASE_CREATE_UPDATE_FIELDS

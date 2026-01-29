@@ -32,9 +32,11 @@ def apply_filters_and_sorting(request, sorting_fields:list, allowed_filters: lis
         final_sort = '-created_at'
         
     request.session[f'{session_key}_sorted_by'] = final_sort
-
-    foreign_key_fields = [f.name for f in model._meta.get_fields() if isinstance(f, ForeignKey)]
-
+    try:
+        foreign_key_fields = [f.name for f in model._meta.get_fields() if isinstance(f, ForeignKey)]
+    except:
+        foreign_key_fields = [f.name for f in query_set if isinstance(f, ForeignKey)]
+        
     applied_filters = {}
     for field in allowed_filters:
         value = request.GET.get(field)
@@ -68,6 +70,7 @@ class BaseMetaDataAPIView(APIView):
     search_fields = []
 
     def get(self, request):
+ 
         if not self.model:
             return Response({"error": "Model not defined"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -92,10 +95,8 @@ class BaseMetaDataAPIView(APIView):
                 else:
                     related_data = related_model.objects.all().values('id', 'name')
                 data[key] = list(related_data)
-
             elif hasattr(model_field, 'choices') and model_field.choices:
                 data[key] = [{'id': k, 'name': v} for k, v in model_field.choices]
-
             else:
                 values = queryset.values_list(field_path, flat=True).distinct()
                 data[key] = [v for v in values if v is not None]
@@ -105,12 +106,13 @@ class BaseMetaDataAPIView(APIView):
             try:
                 clean_f = f_name.replace('^', '').split('__')[0]
                 names_list.append(str(self.model._meta.get_field(clean_f).verbose_name))
+        
             except:
                 names_list.append(f_name)
         
         search_label = "، ".join(names_list)
         display_names['q'] = f'جستجو ({search_label})'
-        
+     
         data['display_names'] = display_names
 
         return Response(data, status=status.HTTP_200_OK)
@@ -122,7 +124,7 @@ def set_paginator(request, query_set, total_limited=50):
     limited_query_set = query_set[:total_limited]
 
     page_number = request.GET.get('page', 1)
-    paginator = Paginator(limited_query_set, 2)
+    paginator = Paginator(limited_query_set, 10)
 
     page_obj = paginator.get_page(page_number)
     

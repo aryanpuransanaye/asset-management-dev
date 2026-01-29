@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
                 ('port', models.IntegerField(blank=True, null=True, verbose_name='پورت')),
                 ('owner', models.CharField(blank=True, max_length=150, null=True, verbose_name='مالک')),
                 ('license_status', models.CharField(blank=True, choices=[('a', 'فعال'), ('d', 'غیر فعال')], max_length=150, null=True, verbose_name='وضعیت لایسنس')),
-                ('license_expired_data', models.CharField(blank=True, max_length=150, null=True, verbose_name='تاریخ انقضای لایسنس')),
+                ('license_expired_date', models.CharField(blank=True, max_length=150, null=True, verbose_name='تاریخ انقضای لایسنس')),
                 ('manufacturer', models.CharField(blank=True, max_length=150, null=True, verbose_name='سازنده')),
                 ('name', models.CharField(blank=True, max_length=500, null=True, verbose_name='نام نرم\u200cافزار')),
                 ('access_level', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='accounts.accesslevel', verbose_name='سطح دسترسی')),

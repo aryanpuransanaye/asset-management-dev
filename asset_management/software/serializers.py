@@ -10,7 +10,7 @@ class ListSerializer(BaseListSerializer):
         model = Software
         fields = [
             'id', 'supplier', 'hardware_location', 'related_property', 'port', 'owner', 'license_status_name',
-            'license_expired_data', 'manufacturer', 'name'
+            'license_expired_date', 'manufacturer', 'name'
         ] + BASE_LIST_FIELDS
 
 
@@ -21,7 +21,7 @@ class DetailSerializer(BaseDetailSerializer):
         model = Software
         fields = [
             'supplier', 'hardware_location', 'related_property', 'port', 'owner', 'license_status_name',
-            'license_expired_data', 'manufacturer', 'name'
+            'license_expired_date', 'manufacturer', 'name'
         ] + BASE_DETAIL_FIELDS
 
 
@@ -30,5 +30,5 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
         model = Software
         fields = [
             'supplier', 'hardware_location', 'related_property', 'port', 'owner', 'license_status',
-            'license_expired_data', 'manufacturer', 'name'
+            'license_expired_date', 'manufacturer', 'name'
         ] + BASE_CREATE_UPDATE_FIELDS

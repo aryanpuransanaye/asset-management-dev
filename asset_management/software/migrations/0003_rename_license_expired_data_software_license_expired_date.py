@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RenameField(
             model_name='software',
-            old_name='license_expired_data',
+            old_name='license_expired_date',
             new_name='license_expired_date',
         ),
     ]

@@ -58,7 +58,6 @@ class DataAndInformationListAPIView(APIView):
 
     def get(self, request):
         
-        # config = get_data_and_information_config()
         data_and_informations = apply_filters_and_sorting(
             request, 
             config['sorting'], 
@@ -75,6 +74,7 @@ class DataAndInformationListAPIView(APIView):
         paginator = set_paginator(request, data_and_informations)
         serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
+        
         return Response({
             'results':serializer.data,
             'total_pages': paginator['total_pages'],
@@ -171,8 +171,8 @@ class DataAndInformationExport(APIView):
         ws = wb.active
         ws.title = 'داده و اطلاعات'
         ws.sheet_view.rightToLeft = True
-        fields = DataAndInformation._meta.fields
-        header = [field.verbose_name for field in fields]
+        fields = [field for field in DataAndInformation._meta.fields if field.name != 'id']
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
 
         for thing in data_and_informations:

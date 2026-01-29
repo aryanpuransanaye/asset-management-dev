@@ -1,21 +1,21 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import ActiveDirectory
-from accounts.models import User
 from . import serializers
 import ldap3
-
+from core.utils import get_accessible_queryset
+from accounts.permissions import IsStaffOrSuperuser
 
 class ActiveDirectoryListAPIView(APIView):
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
     def get(self, request):
 
-        activate_directories = ActiveDirectory.objects.all()
+        activate_directories = get_accessible_queryset(request, model=ActiveDirectory)
         serializer = serializers.ActiveDirectorySerializer(activate_directories, many = True)
 
         return Response(serializer.data)
@@ -23,7 +23,7 @@ class ActiveDirectoryListAPIView(APIView):
 
 class ActiveDirectoryAPIView(APIView):
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
     def get(self, request, active_directory_id):
 
@@ -71,7 +71,7 @@ class ActiveDirectoryAPIView(APIView):
 
 class ActiveDirectoryTestConnectionAPIView(APIView):
     
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
     def post(self, request, active_directory_id=None):
       
@@ -124,7 +124,7 @@ class ActiveDirectoryTestConnectionAPIView(APIView):
 
 class ActiveDirectoryScannerAPIView(APIView):
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
     def post(self, request, active_directory_id):
 

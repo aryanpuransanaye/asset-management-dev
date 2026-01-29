@@ -23,6 +23,5 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = InfrastructureAssets
         fields = [
-            'organization', 'sub_organization',
             'supplier','location', 'related_property', 'usage', 'owner', 'name',
         ] + BASE_CREATE_UPDATE_FIELDS

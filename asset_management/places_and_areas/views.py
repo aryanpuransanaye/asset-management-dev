@@ -157,9 +157,9 @@ class PlacesAndAreasExportAPIView(APIView):
         ws = wb.active
         ws.title = 'اماکن و محوطه'
 
-        fields = PlacesAndArea._meta.fields
+        fields = [field for field in PlacesAndArea._meta.fields if field.name != 'id']
 
-        header = [field.verbose_name for field in fields]
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in places_and_areas:

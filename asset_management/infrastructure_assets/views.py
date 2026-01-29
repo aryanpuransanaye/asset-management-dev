@@ -90,7 +90,7 @@ class InfrastructureAssetsAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'infrastructure_assets'
 
-    def get(self, request, infrastructure_asset_id):
+    def get(self, request, infrastructure_asset_id=None):
 
         config_form = serializers.CreateUpdateSerializer.get_form_config()
 
@@ -170,9 +170,9 @@ class InfrastructureAssetsExportAPIView(APIView):
         ws.title = 'درایی های زیرساختی'
         ws.sheet_view.rightToLeft = True
 
-        fields = InfrastructureAssets._meta.fields
+        fields = [field for field in InfrastructureAssets._meta.fields if field.name != 'id']
 
-        header = [field.verbose_name for field in fields]
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in infrastructure_assets:

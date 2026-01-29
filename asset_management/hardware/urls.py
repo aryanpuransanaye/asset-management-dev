@@ -20,5 +20,5 @@ urlpatterns = [
    
 
     path('hardware/export/', views.HardwareExportAPIView.as_view(), name='hardware-list'),
-
+    
 ]

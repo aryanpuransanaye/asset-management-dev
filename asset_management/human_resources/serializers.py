@@ -24,7 +24,6 @@ class CreateUpdateSerializer(BaseCreateUpdateSerializer):
     class Meta(BaseCreateUpdateSerializer.Meta):
         model = HumanResource
         fields = [
-            'organization', 'sub_organization',
             'full_name', 'manager', 'start_date', 'end_date_of_work', 'organizational_unit', 'location',
             'administrative_position', 'personnel_id',
         ] + BASE_CREATE_UPDATE_FIELDS

@@ -90,7 +90,7 @@ class IntangibleAssetsAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'intangible_assets'
 
-    def get(self, request, intangible_asset_id):
+    def get(self, request, intangible_asset_id=None):
 
         config_form = serializers.CreateUpdateSerializer.get_form_config()
 
@@ -169,9 +169,9 @@ class IntangibleAssetsExportAPIView(APIView):
         ws.title = 'درایی های نامشهود'
         ws.sheet_view.rightToLeft = True
 
-        fields = IntangibleAsset._meta.fields
+        fields = [field for field in IntangibleAsset._meta.fields if field.name != 'id']
 
-        header = [field.verbose_name for field in fields]
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in intangible_assets:

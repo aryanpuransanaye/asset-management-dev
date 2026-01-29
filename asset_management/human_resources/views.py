@@ -86,7 +86,7 @@ class HumanResourceAPIView(APIView):
     permission_classes = [IsAuthenticated, DynamicSystemPermission]
     base_perm_name = 'human_resources'
 
-    def get(self, request, human_resource_id):
+    def get(self, request, human_resource_id=None):
 
         config_form = serializers.CreateUpdateSerializer.get_form_config()
         
@@ -166,9 +166,8 @@ class HumanResourcesExportAPIView(APIView):
         ws.title = 'منابع انسانی'
         ws.sheet_view.rightToLeft = True
 
-        fields = HumanResource._meta.fields
-
-        header = [field.verbose_name for field in fields]
+        fields = [field for field in HumanResource._meta.fields if field.name != 'id']
+        header = header = [field.verbose_name for field in fields]
         ws.append(header)
         
         for thing in human_resources:
