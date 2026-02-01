@@ -13,4 +13,4 @@ class IPManageAdmin(admin.ModelAdmin):
 
 @admin.register(ScanHistory)
 class ScanHistoryAdmin(admin.ModelAdmin):
-    list_display = ['id', 'status', 'created_at', 'finished_at', 'network_range', 'result_count']
+    list_display = ['id', 'status', 'created_at', 'finished_at', 'network_range', 'result_count', 'error_message']

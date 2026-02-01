@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import IPManage, DiscoveredAsset
+from accounts.models import User, AccessLevel
 from data_and_information.models import DataAndInformation
 from software.models import Software
 from services.models import Services
@@ -17,16 +18,38 @@ class IPByUserListSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source = 'user.username')
     access_level_name = serializers.ReadOnlyField(source = 'access_level.level_name')
     created_at = serializers.SerializerMethodField()
+
+    status = serializers.SerializerMethodField()
+    result_count = serializers.SerializerMethodField()
+
+    LABEL_OVERRIDES = {
+        'status': 'وضعیت اسکن',
+        'result_count': 'تعداد یافته‌ها',
+    }
     class Meta:
         model = IPManage
         fields = [
             'id', 'name', 'username', 'access_level_name',
-            'ipaddress', 'subnet', 'vlan', 'created_at',
+            'ipaddress', 'subnet', 'vlan', 'status', 'result_count', 'created_at',
         ]
     
     def get_created_at(self, obj):
         if obj.created_at:
             return jdatetime.datetime.fromgregorian(datetime=obj.created_at).strftime('%Y/%m/%d %H:%M')
+        return None
+
+    def get_status(self, obj):
+    
+        last = obj.scan_history.order_by('-created_at').first()
+        if last:
+            return last.get_status_display()
+        return None
+
+    def get_result_count(self, obj):
+        
+        last = obj.scan_history.order_by('-created_at').first()
+        if last:
+            return last.result_count
         return None
     
     @classmethod
@@ -42,6 +65,10 @@ class IPByUserListSerializer(serializers.ModelSerializer):
                 label = model._meta.get_field(field_name).verbose_name
             except:
                 label = field_name.replace('_', ' ').capitalize()
+            # apply any serializer-level label overrides for computed fields
+            overrides = getattr(cls, 'LABEL_OVERRIDES', {})
+            if field_name in overrides:
+                label = overrides[field_name]
             
             columns.append({
                 'key': field_name,
@@ -120,6 +147,11 @@ class IpByUserCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class CreateScannedAssetSerializer(serializers.ModelSerializer):
+
+    network_range = serializers.PrimaryKeyRelatedField(queryset=IPManage.objects.all())
+    access_level = serializers.PrimaryKeyRelatedField(queryset=AccessLevel.objects.all())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    
     class Meta:
         model = DiscoveredAsset
         fields = [
@@ -135,17 +167,17 @@ class CreateScannedAssetSerializer(serializers.ModelSerializer):
 
 class AssetInManualyRangeListSerializer(serializers.ModelSerializer):
 
-    username = serializers.ReadOnlyField(source = 'user.username')
-    access_level_name = serializers.ReadOnlyField(source = 'access_level.level_name')
-    network_range_ip = serializers.ReadOnlyField(source = 'network_range.ipaddress')
-    category_name = serializers.ReadOnlyField(source = 'get_category_display')
+    user = serializers.ReadOnlyField(source = 'user.username')
+    access_level = serializers.ReadOnlyField(source = 'access_level.level_name')
+    network_range = serializers.ReadOnlyField(source = 'network_range.ipaddress')
+    category = serializers.ReadOnlyField(source = 'get_category_display')
     created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = DiscoveredAsset
         fields = [
-            'id', 'username', 'access_level_name', 'network_range_ip', 'ipaddress',
-            'mac', 'os', 'vendor', 'category_name', 'created_at'
+            'id', 'user', 'access_level', 'network_range', 'ipaddress',
+            'mac', 'os', 'vendor', 'category', 'created_at'
         ]
 
     def get_created_at(self, obj):

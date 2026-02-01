@@ -4,7 +4,6 @@ from accounts.models import User, AccessLevel
 class IPManage(models.Model):
 
     SUBNET = [(str(i), str(i)) for i in range(33)]
-
     subnet = models.CharField(max_length=4, choices=SUBNET, verbose_name='ساب‌نت (Subnet)')
     name = models.CharField(max_length=50, verbose_name='نام محدوده')    
     ipaddress = models.GenericIPAddressField(verbose_name='آدرس IP')
@@ -59,7 +58,9 @@ class ScanHistory(models.Model):
     STATUS_CHOICES = [
         ('running', 'در حال اجرا'),
         ('finished', 'تکمیل شده'),
-        ('failied', 'ناموفق'),
+        ('failed', 'ناموفق'),
+        ('no_new_ip', 'ip جدیدی یافت نشد'),
+        ('canceled', 'کنسل شده'),
     ]
 
     network_range = models.ForeignKey(

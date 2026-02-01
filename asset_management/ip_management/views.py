@@ -6,13 +6,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
 from django.shortcuts import get_object_or_404
-from itertools import chain
-import nmap, openpyxl, jdatetime, ipaddress, threading
+import openpyxl, jdatetime, ipaddress, threading
 from django.db.models import Q, Count
 from django.http import HttpResponse
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
-from .utils import get_discovered_asset_config, get_ip_manage_config, start_scanning
+from .utils import get_discovered_asset_config, get_ip_manage_config
+from .scanning import start_scanning_celery
+from django.db.models import OuterRef, Subquery
 
 config_ip_manage = get_ip_manage_config()
 config_discovered_asset = get_discovered_asset_config()
@@ -60,6 +61,10 @@ class IPListAPIView(APIView):
             model=IPManage
         ).select_related('user', 'access_level')
 
+        latest_scan = ScanHistory.objects.filter(network_range=OuterRef('pk')).order_by(
+            '-created_at'
+        )
+
         paginator = set_paginator(request, ips)
         serializer = serializers.IPByUserListSerializer(paginator['data'], many=True)
         columns = serializers.IPByUserListSerializer.get_active_columns()
@@ -71,8 +76,6 @@ class IPListAPIView(APIView):
             'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
-
-
 
 
 #ip added by user
@@ -131,29 +134,58 @@ class IPManageAPIVIEW(APIView):
         deleted_count, _ = ips.delete()
 
         return Response({'message': f"{deleted_count} things are deleted"}, status=status.HTTP_200_OK)
-        
+
     
 class ScanAssetInManuallyRange(APIView):
+
     permission_classes = [IsAuthenticated]
+    base_perm_name = 'can_use_scanners'
 
 
     def get(self, request, ip_id):
-        scan_record = get_object_or_404(ScanHistory, network_range_id=ip_id)
-        print(scan_record.status)
+        scan_record = ScanHistory.objects.filter(network_range_id=ip_id).order_by('-created_at').first()
+        if not scan_record:
+            return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
         return Response({
             'status': scan_record.status,
             'result_count': scan_record.result_count
         }, status=status.HTTP_200_OK)
     
+    
+    def delete(self, request, ip_id):
+        scan_record = ScanHistory.objects.filter(network_range_id=ip_id).order_by('-created_at').first()
+        if not scan_record:
+            return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if scan_record.status != 'running':
+            return Response({'message': 'scan is not running', 'status': scan_record.status}, status=status.HTTP_400_BAD_REQUEST)
+
+        scan_record.status = 'canceled'
+        scan_record.error_message = 'Canceled by user'
+        scan_record.save()
+
+        return Response({'message': 'اسکن کنسل شد'}, status=status.HTTP_200_OK)
+    
 
     def post(self, request, ip_id):
-        thread = threading.Thread(
-            target=start_scanning,
-            args=(ip_id, request.user, request.user.access_level)
-        )
-        thread.start()
+        # thread = threading.Thread(
+        #     target=start_scanning,
+        #     args=(ip_id, request.user, request.user.access_level)
+        # )
+        # thread.start()
         
-        # perform_scan_task.delay(ip_id,request)
+        latest = ScanHistory.objects.filter(network_range_id=ip_id).order_by('-created_at').first()
+        if latest and latest.status == 'running':
+            return Response({'message': 'اسکن در حال اجرا است'}, status=status.HTTP_200_OK)
+
+        scan_record = ScanHistory.objects.create(
+            network_range_id=ip_id,
+            status='running',
+            user_id=request.user.id
+        )
+        # pass the scan_record id so the celery task works on the exact record
+        start_scanning_celery.delay(ip_id, request.user.id, request.user.access_level.id, scan_record.id)
         return Response({'message': 'اسکن شروع شد'}, status=status.HTTP_202_ACCEPTED)
 
 #asset added by scan
@@ -190,7 +222,7 @@ class AssetInRangeSummaryAPIView(APIView):
             {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.mac if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
             {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
             {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
-            {'label': 'پر تکرارترین دسته‌بندی', 'value': most_recent_category['category'] if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
+            {'label': 'پر تکرارترین دسته‌بندی', 'value': dict(DiscoveredAsset.CATEGORY_CHOICES).get(most_recent_category['category']) if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
             {'label': 'همه ip ها', 'value': total_hosts, 'color': 'red'},
             {'label': 'ip های استفاده شده', 'value': used_hosts, 'color': 'red'},
         ]
@@ -247,13 +279,12 @@ class AssetInRagneAPIView(APIView):
     def get(self, request, ip_id):
         
         config_form = serializers.AssetInManualyRangeUpdate.get_form_config()
-        # print(config_form.data)
 
         if ip_id:
             accessible_queryset = get_accessible_queryset(request, model=DiscoveredAsset)
             selected_asset = get_object_or_404(accessible_queryset, id= ip_id)
             serializer = serializers.AssetInManualyRangeDetail(selected_asset)
-            print(serializer.data)
+
         return Response({
             'result':serializer.data if ip_id else {},
             'config_form': config_form

@@ -33,7 +33,7 @@ class SoftwareSummaryAPIView(APIView):
         )
 
         last_item = accessible_queryset.order_by('-created_at').first()
-
+        print(last_item.name)
         summary_data = [
             {'label': 'تعداد نرم‌افزارها', 'value': total_count, 'color': 'purple'},
             {'label': 'مجوز منقضی شده', 'value': software['license_expired_count'], 'color': 'red'},
