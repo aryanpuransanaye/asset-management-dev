@@ -36,7 +36,7 @@ class ActiveDirectoryAPIView(APIView):
         
         serializer = serializers.ActiveDirectorySerializer(data = request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(access_level=request.user.access_level)
             return Response(serializer.data, status = status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
@@ -136,11 +136,11 @@ class ActiveDirectoryScannerAPIView(APIView):
             server = ldap3.Server(config.server_address, port=config.port)
             conn = ldap3.Connection(server, user=f"{config.username}@{config.domain_name}", 
                                     password=config.password, auto_bind=True)
-            
+        
             conn.search(search_base=config.search_base, 
                         search_filter='(&(objectClass=user)(objectCategory=person))', 
                         attributes=['sAMAccountName', 'mail', 'givenName', 'sn'])
-
+            
             for entry in conn.entries:
                 user_data = {
                     'username': entry.sAMAccountName.value,
@@ -157,7 +157,8 @@ class ActiveDirectoryScannerAPIView(APIView):
                 serializer.save()
                 return Response({
                     "message": f"تعداد {len(serializer.data)} کاربر با موفقیت وارد شدند.",
-                    "data": serializer.data
+                    "data": serializer.data,
+                    'new_users_data': len(new_users_data),
                 }, status=status.HTTP_201_CREATED)
             
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
