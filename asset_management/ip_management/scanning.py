@@ -48,7 +48,7 @@ def start_scanning_celery(ip_id, user_id, access_level_id, scan_id=None):
             scan_record.status = 'running'
             scan_record.user_id = user_id
             scan_record.save()
-
+    
     models_with_ip = [
         DiscoveredAsset, DataAndInformation, Software,
         Hardware, Services, PlacesAndArea, InfrastructureAssets,
