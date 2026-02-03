@@ -184,7 +184,7 @@ def start_scan_thread(ip_id, user, access_level):
 
     alive_hosts = [
         ip for ip in nm.all_hosts()
-        if nm[ip]['status']['state'] == 'up' and ip not in existing_ips
+        if nm[ip]['status']['state'] == 'up'
     ]
 
     if not alive_hosts:

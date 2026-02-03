@@ -39,6 +39,9 @@ urlpatterns = [
     #active directory
     path('', include('active_directory.urls')),
 
+    #core
+    path('summary/', include('core.urls')),
+
     re_path(r'^assets/(?P<path>.*)$', serve, {'document_root': os.path.join(FRONTEND_DIR, 'assets')}),
     
     re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),

@@ -23,8 +23,8 @@ class IPByUserListSerializer(serializers.ModelSerializer):
     result_count = serializers.SerializerMethodField()
 
     LABEL_OVERRIDES = {
-        'status': 'وضعیت اسکن',
-        'result_count': 'تعداد یافته‌ها',
+        'status': 'وضعیت اخرین اسکن',
+        'result_count': 'تعداد یافته ها در اخرین اسکن',
     }
     class Meta:
         model = IPManage
@@ -207,8 +207,6 @@ class AssetInManualyRangeListSerializer(serializers.ModelSerializer):
         return columns
     
     
-    
-
 class AssetInManualyRangeDetail(serializers.ModelSerializer):
 
     username = serializers.ReadOnlyField(source = 'user.username')
@@ -223,7 +221,7 @@ class AssetInManualyRangeDetail(serializers.ModelSerializer):
         ]
 
 class AssetInManualyRangeUpdate(serializers.ModelSerializer):
-    # این فیلد را داینامیک در متد update پر می‌کنیم
+   
     target_object_id = serializers.ReadOnlyField()
 
     class Meta:
@@ -274,7 +272,7 @@ class AssetInManualyRangeUpdate(serializers.ModelSerializer):
                 
                 created_target_id = new_asset.id
                 
-                # instance.delete()
+                instance.delete()
 
         if created_target_id:
             setattr(instance, 'target_object_id', created_target_id)
