@@ -27,7 +27,7 @@ class InfrastructureAssetsSummaryAPIView(APIView):
         accessible_queryset = get_accessible_queryset(request, model=InfrastructureAssets)
         total_count = accessible_queryset.count()
 
-        last_infrastructure_assets = accessible_queryset.order_by('-created_at').first()
+        recent_item = accessible_queryset.order_by('-created_at').first()
 
         inftastructure_assets = accessible_queryset.aggregate(
             total_supplier = Count('supplier', distinct=True),
@@ -36,7 +36,7 @@ class InfrastructureAssetsSummaryAPIView(APIView):
 
         summary_data = [
             {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
-            {'label': 'جدیدترین دارایی', 'value': last_infrastructure_assets.name if last_infrastructure_assets else 'دارایی ثبت نشده', 'color': 'grey'},
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'},
             {'label': 'تعداد تامین کننده', 'value': inftastructure_assets['total_supplier'], 'color': 'green'},
             {'label': 'تعداد مالک', 'value': inftastructure_assets['total_owner'], 'color': 'orange'},
         ]

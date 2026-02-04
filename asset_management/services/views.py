@@ -26,11 +26,11 @@ class ServicesSummaryAPIView(APIView):
         accessible_queryset = get_accessible_queryset(request, model=Services)
 
         total_services = accessible_queryset.count()
-        last_service = accessible_queryset.order_by('-created_at').first()
+        recent_item = accessible_queryset.order_by('-created_at').first()
 
         summary_data = [
             {'label': 'تعداد سرویس‌ها', 'value': total_services, 'color': 'blue'},
-            {'label': 'جدیدترین', 'value': last_service.name if last_service else 'دارایی ثتب نشده', 'color': 'green'},
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}
         ]
 
         return Response(summary_data, status=status.HTTP_200_OK)

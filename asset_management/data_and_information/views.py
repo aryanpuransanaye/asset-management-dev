@@ -33,10 +33,10 @@ class DataAndInformationSummaryAPIView(APIView):
 
         summary_data =[
             {'label': 'کل', 'value': total_count, 'color': 'blue'},
-            {'label': 'جدیدترین', 'value': recent_item.name if recent_item else 'داده یا اطلاعات ثبت نشده', 'color': 'grey'},
             {'label': 'خصوصی', 'value': data_and_informations['private_count'], 'color': 'red'},
             {'label': 'محرمانه', 'value': data_and_informations['confidential_count'], 'color': 'orange'},
             {'label': 'عمومی', 'value': data_and_informations['public_count'], 'color': 'green'},
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'},
         ]
 
         return Response(summary_data, status=status.HTTP_200_OK)

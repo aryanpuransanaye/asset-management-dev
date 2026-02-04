@@ -26,9 +26,11 @@ class SupplierSummaryAPIView(APIView):
         accessible_queryset = get_accessible_queryset(request, model=Supplier)
 
         total_suppliers = accessible_queryset.count()
+        recent_item = accessible_queryset.order_by('-created_at').first()
         
         summary_data = [
             {'label': 'تعداد کل', 'value': total_suppliers, 'color': 'blue'},
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}
         ]
 
         return Response(summary_data, status=status.HTTP_200_OK)

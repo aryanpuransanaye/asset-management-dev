@@ -32,13 +32,13 @@ class IntangibleAssetsSummaryAPIView(APIView):
             owner_count = Count('owner', distinct=True),
         )
 
-        last_intangible_asset = accessible_queryset.order_by('-created_at').first()
+        recent_item = accessible_queryset.order_by('-created_at').first()
 
         summary_data = [
             {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
             {'label': 'تعداد تامین کننده', 'value': intangible_asset['supplier_count'], 'color': 'green'},
             {'label': 'تعداد مالک', 'value': intangible_asset['owner_count'], 'color': 'orange'},
-            {'label': 'جدیدترین دارایی', 'value': last_intangible_asset.name if last_intangible_asset else 'دارایی ثبت نشده', 'color': 'grey'},
+           {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}
         ]
 
         return Response(summary_data, status=status.HTTP_200_OK)

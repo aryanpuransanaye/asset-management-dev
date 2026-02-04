@@ -24,13 +24,13 @@ class PlacesAndAreasSummaryAPIView(APIView):
     def get(self, request):
 
         accessible_queryset = get_accessible_queryset(request, model=PlacesAndArea)
-        last_item = accessible_queryset.order_by('-created_at').first()
+        recent_item = accessible_queryset.order_by('-created_at').first()
 
         total_count = accessible_queryset.count()
 
         summary_data = [
             {'label': 'تعداد مکان‌ها و مناطق', 'value': total_count, 'color': 'purple'},
-            {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'},
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}
         ]
 
         return Response(summary_data, status=status.HTTP_200_OK)

@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('mac', models.CharField(blank=True, max_length=20, null=True, verbose_name='آدرس MAC')),
                 ('os', models.CharField(blank=True, max_length=500, null=True, verbose_name='سیستم عامل')),
                 ('vendor', models.CharField(blank=True, max_length=500, null=True, verbose_name='تولیدکننده')),
-                ('category', models.CharField(blank=True, choices=[('0', 'داده و اطلاعات'), ('1', 'نرم افزار'), ('2', 'سرویس'), ('3', 'سخت افزار'), ('4', 'اماکن و محوطه'), ('5', 'منابع انسانی'), ('6', 'دارایی های زیر ساخت'), ('7', 'دارایی های نامشهود'), ('8', 'تامین کنندگان')], default='بدون دسته بندی', max_length=250, null=True, verbose_name='دسته دارایی')),
+                ('category', models.CharField(blank=True, choices=[('0', 'داده و اطلاعات'), ('1', 'نرم افزار'), ('2', 'سرویس'), ('3', 'سخت افزار'), ('4', 'اماکن و محوطه'), ('5', 'منابع انسانی'), ('6', 'دارایی های زیر ساخت'), ('7', 'دارایی های نامشهود'), ('8', 'تامین کنندگان')], default='', max_length=250, null=True, verbose_name='دسته دارایی')),
                 ('created_at', models.DateTimeField(auto_now=True, verbose_name='زمان شناسایی')),
                 ('access_level', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='accounts.accesslevel', verbose_name='سطح دسترسی')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='کاربر')),

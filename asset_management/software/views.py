@@ -32,13 +32,13 @@ class SoftwareSummaryAPIView(APIView):
             license_not_expired_count = Count('license_expired_date', filter=Q(license_expired_date__gte=jdatetime.datetime.now().togregorian())),
         )
 
-        last_item = accessible_queryset.order_by('-created_at').first()
-        print(last_item.name)
+        recent_item = accessible_queryset.order_by('-created_at').first()
+        
         summary_data = [
             {'label': 'تعداد نرم‌افزارها', 'value': total_count, 'color': 'purple'},
             {'label': 'مجوز منقضی شده', 'value': software['license_expired_count'], 'color': 'red'},
             {'label': 'مجوز معتبر', 'value': software['license_not_expired_count'], 'color': 'green'},
-            {'label': 'جدیدترین', 'value': last_item.name if last_item else 'دارایی ثبت نشده', 'color': 'orange'}
+            {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}
         ]
 
         return Response(summary_data,status=status.HTTP_200_OK)

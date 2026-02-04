@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='discoveredasset',
             name='category',
-            field=models.CharField(blank=True, choices=[('data-and-information', 'داده و اطلاعات'), ('software', 'نرم افزار'), ('service', 'سرویس'), ('hardware', 'سخت افزار'), ('places-and-areas', 'اماکن و محوطه'), ('human-resource', 'منابع انسانی'), ('infrastructure-asset', 'دارایی های زیر ساخت'), ('intangible-asset', 'دارایی های نامشهود'), ('supplier', 'تامین کنندگان')], default='بدون دسته بندی', max_length=250, null=True, verbose_name='دسته دارایی'),
+            field=models.CharField(blank=True, choices=[('data-and-information', 'داده و اطلاعات'), ('software', 'نرم افزار'), ('service', 'سرویس'), ('hardware', 'سخت افزار'), ('places-and-areas', 'اماکن و محوطه'), ('human-resource', 'منابع انسانی'), ('infrastructure-asset', 'دارایی های زیر ساخت'), ('intangible-asset', 'دارایی های نامشهود'), ('supplier', 'تامین کنندگان')], default='', max_length=250, null=True, verbose_name='دسته دارایی'),
         ),
     ]

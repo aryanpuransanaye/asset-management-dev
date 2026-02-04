@@ -30,7 +30,6 @@ class IPManageSummaryAPIView(APIView):
 
         total_ips = accessible_queryset.count()
 
-
         summary_data = [
             {'label': 'تعداد کل آی‌پی‌ها', 'value': total_ips, 'color': 'blue'},
         ]
@@ -206,12 +205,12 @@ class AssetInRangeSummaryAPIView(APIView):
 
         assets_by_category = asset_by_range.aggregate(
             assets_category_selected = Count('id', filter=Q(category__isnull=False)),
-            assets_category_not_selected = Count('id', filter=Q(category__isnull=True)),
+            # assets_category_not_selected = Count('id', filter=Q(category__isnull=True)),
         )
 
-        most_recent_category = asset_by_range.values('category').annotate(
-            count=Count('id')
-        ).order_by('-count').first()
+        # most_recent_category = asset_by_range.exclude(Q(category='بدون دسته بندی') | Q(category__isnull=True))\
+        #     .values('category').annotate(count=Count('id')).order_by('-count').first()
+
 
         network = ipaddress.IPv4Network(f'{selected_range.ipaddress}/{selected_range.subnet}', strict=False)
         total_hosts = max(0, network.num_addresses - 2)
@@ -219,10 +218,10 @@ class AssetInRangeSummaryAPIView(APIView):
 
         summary_data = [
             {'label': 'تعداد کل دارایی‌ها', 'value': total_assets, 'color': 'blue'},
-            {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.mac if last_scanned_item else 'دارایی ثبت نشده', 'color': 'grey'},
-            {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_selected'], 'color': 'green'},
-            {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_not_selected'], 'color': 'orange'},
-            {'label': 'پر تکرارترین دسته‌بندی', 'value': dict(DiscoveredAsset.CATEGORY_CHOICES).get(most_recent_category['category']) if most_recent_category else 'دسته‌بندی ثبت نشده', 'color': 'red'},
+            {'label': 'جدیدترین دارایی اسکن شده', 'value': last_scanned_item.ipaddress if last_scanned_item else 'دارایی ثبت نشده', 'color' : 'pink'},
+            # {'label': 'دارایی‌ها با دسته‌بندی انتخاب شده', 'value': assets_by_category['assets_category_not_selected'], 'color': 'green'},
+            {'label': 'دارایی‌ها بدون دسته‌بندی', 'value': assets_by_category['assets_category_selected'], 'color': 'orange'},
+            # {'label': 'پر تکرارترین دسته‌بندی', 'value': dict(DiscoveredAsset.CATEGORY_CHOICES).get(most_recent_category['category']) if most_recent_category else 'بدون دسته بندی', 'color': 'red'},
             {'label': 'همه ip ها', 'value': total_hosts, 'color': 'red'},
             {'label': 'ip های استفاده شده', 'value': used_hosts, 'color': 'red'},
         ]
