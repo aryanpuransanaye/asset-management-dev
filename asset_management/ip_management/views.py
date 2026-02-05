@@ -14,6 +14,7 @@ from core.permissions import DynamicSystemPermission
 from .utils import get_discovered_asset_config, get_ip_manage_config
 from .scanning import start_scanning_celery
 from django.db.models import OuterRef
+from celery import current_app
 
 config_ip_manage = get_ip_manage_config()
 config_discovered_asset = get_discovered_asset_config()
@@ -153,6 +154,9 @@ class ScanAssetInManuallyRange(APIView):
     
     
     def delete(self, request, ip_id):
+        """
+        لغو تسک scanning در حال اجرا
+        """
         scan_record = ScanHistory.objects.filter(network_range_id=ip_id).order_by('-created_at').first()
         if not scan_record:
             return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -163,6 +167,12 @@ class ScanAssetInManuallyRange(APIView):
         scan_record.status = 'canceled'
         scan_record.error_message = 'Canceled by user'
         scan_record.save()
+
+        if scan_record.celery_task_id:
+            try:
+                current_app.control.revoke(scan_record.celery_task_id, terminate=True)
+            except Exception as e:
+                print(f"Error revoking task: {e}")
 
         return Response({'message': 'اسکن کنسل شد'}, status=status.HTTP_200_OK)
     

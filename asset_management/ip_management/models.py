@@ -76,5 +76,7 @@ class ScanHistory(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='running', verbose_name='وضعیت')
     result_count = models.IntegerField(default=0, verbose_name="تعداد یافته‌ها")
     created_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ ایجاد')
-    finished_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ پایان')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ پایان')
     error_message = models.TextField(blank=True, null=True, verbose_name="پیام خطا")
+
+    celery_task_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="Celery Task ID")
