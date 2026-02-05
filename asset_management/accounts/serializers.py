@@ -230,13 +230,13 @@ class PermissionDetailSerializer(serializers.ModelSerializer):
 
 
 class GroupsDetailSerializer(serializers.ModelSerializer):
-    custom_user_set = UserSerializer(many=True, read_only=True)
+    group_users = UserSerializer(source= 'custom_user_set', many=True, read_only=True)
     users_count = serializers.IntegerField(read_only=True)
     group_permissions = PermissionsSimpleSerializer(source='permissions', many=True, read_only=True)
 
     class Meta:
         model = Group
-        fields = ['id', 'name', 'custom_user_set', 'users_count', 'group_permissions']  # 'user_set' to show users in the group
+        fields = ['id', 'name', 'group_users', 'users_count', 'group_permissions']  # 'user_set' to show users in the group
 
 
 class GroupsCreateSerializer(serializers.ModelSerializer):
