@@ -18,6 +18,14 @@ def get_accessible_queryset(request, model=None, queryset=None):
 
     allowed_levels = user.access_level.get_descendants(include_self=True)
 
+    # Special case for AccessLevel model - it doesn't have access_level field
+    from accounts.models import AccessLevel
+    if (model and model.__name__ == 'AccessLevel') or (queryset and queryset.model.__name__ == 'AccessLevel'):
+        # Return access levels that are descendants of or equal to user's access level
+        if queryset is not None:
+            return queryset.filter(id__in=allowed_levels)
+        return model.objects.filter(id__in=allowed_levels)
+
     if queryset is not None:
         return queryset.filter(access_level__in=allowed_levels)
     return model.objects.filter(access_level__in=allowed_levels)

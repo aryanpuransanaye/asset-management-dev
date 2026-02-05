@@ -237,13 +237,7 @@ def start_scanning_celery(ip_id, user_id, access_level_id, scan_id=None):
     
 #     serializer = CreateScannedAssetSerializer(data=new_assets_data, many=True)
 #     if serializer.is_valid():
-#         print(serializer.data)
 #         serializer.save()
-#     else:
-#         print(serializer.errors)
-    
-#     print(len(new_assets_data))
-
 #     scan_record.refresh_from_db()
 #     if scan_record.status != 'canceled':
 #         scan_record.status = 'finished'

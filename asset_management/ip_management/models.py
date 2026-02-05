@@ -4,10 +4,10 @@ from accounts.models import User, AccessLevel
 class IPManage(models.Model):
 
     SUBNET = [(str(i), str(i)) for i in range(33)]
-    subnet = models.CharField(max_length=4, choices=SUBNET, verbose_name='ساب‌نت (Subnet)')
+    subnet = models.CharField(max_length=4, choices=SUBNET, verbose_name='Subnet')
     name = models.CharField(max_length=50, verbose_name='نام محدوده')    
     ipaddress = models.GenericIPAddressField(verbose_name='آدرس IP')
-    vlan = models.IntegerField(null=True, blank=True, verbose_name='وی‌لن (VLAN)')
+    vlan = models.IntegerField(null=True, blank=True, verbose_name='Vlan')
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='کاربر ثبت‌کننده')
     access_level = models.ForeignKey(AccessLevel, on_delete=models.CASCADE, verbose_name='سطح دسترسی')

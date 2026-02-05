@@ -28,13 +28,15 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     
 
 class AccessLevelSerliazlizer(serializers.ModelSerializer):
+    main_level_name = serializers.SerializerMethodField()
+    
     class Meta:
-        
         model = AccessLevel
         fields = ['id', 'level_name', 'parent', 'main_level', 'main_level_name']
-
-        def validete_parent(self, value):
-            return value
+    
+    def get_main_level_name(self, obj):
+        root = obj.get_root()
+        return root.level_name if root else obj.level_name
 
 
 class GroupSimpleSerializer(serializers.ModelSerializer):
@@ -59,7 +61,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'first_name', 'last_name', 'gender', 'access_level_name', 'groups', 'user_permissions', 'is_active']
+        fields = ['id', 'username', 'email', 'phone_number', 'first_name', 'last_name', 'gender', 'access_level_name', 'groups', 'user_permissions', 'is_active', 'is_staff']
         read_only_fields = fields
 
 
@@ -93,7 +95,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         
         user = User.objects.create_user(password=password, **validated_data)
-        print(access_level_data.id)
         if groups_data:
             user.groups.set(groups_data)
         if permissions_data:
@@ -332,7 +333,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'phone_number', 
             'first_name', 'last_name', 'is_active', 'is_staff',
             'groups_input', 'user_permissions_input', 'gender',
-            'groups', 'user_permissions' 
+            'groups', 'user_permissions', 'access_level'
         ]
         read_only_fields = ['id']
 

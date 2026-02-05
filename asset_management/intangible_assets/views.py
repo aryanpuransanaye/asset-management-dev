@@ -46,7 +46,7 @@ class IntangibleAssetsSummaryAPIView(APIView):
 class IntangibleAssetsMetaDataAPIView(BaseMetaDataAPIView):
 
     model = IntangibleAsset
-    fields_map = {field:field for field in config}
+    fields_map = {field:field for field in config['filters']}
     search_fields = config['search']
 
 

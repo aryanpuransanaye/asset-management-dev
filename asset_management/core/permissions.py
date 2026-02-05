@@ -16,8 +16,8 @@ class DynamicSystemPermission(permissions.BasePermission):
         if not base_perm_name:
             return False
 
-        crud_perm = f'accounts.{base_perm_name}_crud'
-        read_perm = f'accounts.{base_perm_name}_r'
+        crud_perm = f'accounts.asset_{base_perm_name}_crud'
+        read_perm = f'accounts.asset_{base_perm_name}_r'
 
         if request.method in permissions.SAFE_METHODS: # GET
             return user.has_perm(read_perm) or user.has_perm(crud_perm)
