@@ -94,40 +94,41 @@ class SystemAccessPermission(models.Model):
         default_permissions = ()
 
         permissions = [
-            ('ip_manage_crud', 'مدیریت کامل رکوردهای IP (ایجاد، مشاهده، ویرایش، حذف)'),
-            ('ip_manage_r', 'فقط مشاهده رکوردهای IP'),
+            ('asset_ip_manage_crud', 'مدیریت کامل رکوردهای IP (ایجاد، مشاهده، ویرایش، حذف)'),
+            ('asset_ip_manage_r', 'فقط مشاهده رکوردهای IP'),
 
-            ('data_and_information_crud', 'مدیریت کامل داده‌ها و اطلاعات'),
-            ('data_and_information_r', 'فقط مشاهده داده‌ها و اطلاعات'),
+            ('asset_data_and_information_crud', 'مدیریت کامل داده‌ها و اطلاعات'),
+            ('asset_data_and_information_r', 'فقط مشاهده داده‌ها و اطلاعات'),
 
-            ('software_crud', 'مدیریت کامل نرم‌افزارها'),
-            ('software_r', 'فقط مشاهده نرم‌افزارها'),
+            ('asset_software_crud', 'مدیریت کامل نرم‌افزارها'),
+            ('asset_software_r', 'فقط مشاهده نرم‌افزارها'),
 
-            ('services_crud', 'مدیریت کامل سرویس‌ها'),
-            ('services_r', 'فقط مشاهده سرویس‌ها'),
+            ('asset_services_crud', 'مدیریت کامل سرویس‌ها'),
+            ('asset_services_r', 'فقط مشاهده سرویس‌ها'),
 
-            ('hardware_crud', 'مدیریت کامل سخت‌افزارها'),
-            ('hardware_r', 'فقط مشاهده سخت‌افزارها'),
+            ('asset_hardware_crud', 'مدیریت کامل سخت‌افزارها'),
+            ('asset_hardware_r', 'فقط مشاهده سخت‌افزارها'),
 
-            ('place_and_areas_crud', 'مدیریت کامل اماکن و محوطه‌ها'),
-            ('place_and_areas_r', 'فقط مشاهده اماکن و محوطه‌ها'),
+            ('asset_place_and_areas_crud', 'مدیریت کامل اماکن و محوطه‌ها'),
+            ('asset_place_and_areas_r', 'فقط مشاهده اماکن و محوطه‌ها'),
 
-            ('human_resources_crud', 'مدیریت کامل منابع انسانی'),
-            ('human_resources_r', 'فقط مشاهده منابع انسانی'),
+            ('asset_human_resources_crud', 'مدیریت کامل منابع انسانی'),
+            ('asset_human_resources_r', 'فقط مشاهده منابع انسانی'),
 
-            ('infrastructure_assets_crud', 'مدیریت کامل زیرساخت‌ها'),
-            ('infrastructure_assets_r', 'فقط مشاهده زیرساخت‌ها'),
+            ('asset_infrastructure_assets_crud', 'مدیریت کامل زیرساخت‌ها'),
+            ('asset_infrastructure_assets_r', 'فقط مشاهده زیرساخت‌ها'),
 
-            ('intangible_assets_crud', 'مدیریت کامل دارایی‌های نامشهود'),
-            ('intangible_assets_r', 'فقط مشاهده دارایی‌های نامشهود'),
+            ('asset_intangible_assets_crud', 'مدیریت کامل دارایی‌های نامشهود'),
+            ('asset_intangible_assets_r', 'فقط مشاهده دارایی‌های نامشهود'),
 
-            ('suppliers_crud', 'مدیریت کامل تامین‌کنندگان'),
-            ('suppliers_r', 'فقط مشاهده تامین‌کنندگان'),
-
-            ('can_response_to_tickets', 'امکان پاسخگویی به تیکت‌ها'),
-            ('can_manage_helpdesk_setting', 'مدیریت تنظیمات هلپ‌دسک'),
+            ('asset_suppliers_crud', 'مدیریت کامل تامین‌کنندگان'),
+            ('asset_suppliers_r', 'فقط مشاهده تامین‌کنندگان'),
+            
             ('can_use_scanners', 'امکان استفاده از اسکنرهای دارایی'),
-            ('can_answer_questions', 'امکان پاسخ به سوالات کاربران'),
+
+            ('ticket_can_response_to_tickets', 'امکان پاسخگویی به تیکت‌ها'),
+            ('ticket_can_manage_helpdesk_setting', 'مدیریت تنظیمات هلپ‌دسک'),
+            ('ticket_can_answer_questions', 'امکان پاسخ به سوالات کاربران'),
         ]
 
 
