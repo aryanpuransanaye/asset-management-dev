@@ -13,7 +13,7 @@ from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_p
 from core.permissions import DynamicSystemPermission
 from .utils import get_discovered_asset_config, get_ip_manage_config
 from .scanning import start_scanning_celery
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef
 
 config_ip_manage = get_ip_manage_config()
 config_discovered_asset = get_discovered_asset_config()

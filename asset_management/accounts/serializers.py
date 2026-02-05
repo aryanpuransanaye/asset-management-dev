@@ -31,7 +31,7 @@ class AccessLevelSerliazlizer(serializers.ModelSerializer):
     class Meta:
         
         model = AccessLevel
-        fields = ['id', 'level_name', 'parent', 'main_level']
+        fields = ['id', 'level_name', 'parent', 'main_level', 'main_level_name']
 
         def validete_parent(self, value):
             return value
@@ -55,43 +55,67 @@ class UserSerializer(serializers.ModelSerializer):
 
     groups = GroupSimpleSerializer(many=True, read_only=True)
     user_permissions = PermissionsSimpleSerializer(many=True, read_only=True)
+    access_level_name = serializers.ReadOnlyField(source = 'access_level.level_name')
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'first_name', 'last_name', 'gender', 'groups', 'user_permissions']
+        fields = ['id', 'username', 'email', 'phone_number', 'first_name', 'last_name', 'gender', 'access_level_name', 'groups', 'user_permissions']
         read_only_fields = fields
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+
     password = serializers.CharField(write_only=True, required=True, min_length=6)
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True, default="")
     groups = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True, required=False)
     user_permissions = serializers.PrimaryKeyRelatedField(queryset=Permission.objects.all(), many=True, required=False)
+    access_level = serializers.PrimaryKeyRelatedField(queryset=AccessLevel.objects.all(), required=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'gender', 'password', 'groups', 'user_permissions', 'is_staff', 'is_active']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'gender', 'password',
+            'groups', 'user_permissions', 'is_staff', 'is_active', 'access_level'
+        ]
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     request = self.context.get('request')
+    #     if request and hasattr(request, 'access_level'):
+    #         self.fields['user_access_level'].queryset = AccessLevel.objects.filter(
+    #             access_level=request.access_level
+    #         )
 
     def create(self, validated_data):
         groups_data = validated_data.pop('groups', [])
         permissions_data = validated_data.pop('user_permissions', [])
-
+        access_level_data = validated_data.pop('access_level', None)
         password = validated_data.pop('password')
+        
         user = User.objects.create_user(password=password, **validated_data)
-
+        print(access_level_data.id)
         if groups_data:
             user.groups.set(groups_data)
         if permissions_data:
             user.user_permissions.set(permissions_data)
-
+        if access_level_data:
+            user.access_level = access_level_data
+            user.save()  # حتماً باید save شود تا تغییرات ذخیره شود
+        
         return user
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+
+    access_level_name = serializers.ReadOnlyField(source = 'access_level.level_name')
+    is_active_display = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'phone_number', 'email', 'gender', 'is_staff', 'is_active']
+        fields = ['username', 'first_name', 'last_name', 'phone_number', 'email', 'gender', 'is_staff', 'is_active', 'access_level_name', 'is_active_display']
 
+    def get_is_active_display(self, obj):
+        return 'فعال' if obj.is_active else 'غیرفعال'
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:

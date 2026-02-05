@@ -140,6 +140,7 @@ class UserProfileAPIView(APIView):
         user = request.user
 
         serializer = serializers.UserProfileSerializer(user)
+        print(serializer.data)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
     

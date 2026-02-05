@@ -14,6 +14,11 @@ class AccessLevel(MPTTModel):
 
     def __str__(self):
         return str(self.level_name)
+    
+    @property
+    def main_level_name(self):
+        root = self.get_root()
+        return root.level_name if root else self.level_name
 
 
 class User(AbstractUser):
