@@ -32,7 +32,7 @@ class AccessLevelSerliazlizer(serializers.ModelSerializer):
     
     class Meta:
         model = AccessLevel
-        fields = ['id', 'level_name', 'parent', 'main_level', 'main_level_name']
+        fields = ['id', 'level_name', 'parent', 'main_level', 'main_level_name', 'parent_level_name']
     
     def get_main_level_name(self, obj):
         root = obj.get_root()

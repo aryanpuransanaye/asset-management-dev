@@ -17,6 +17,7 @@ urlpatterns = [
     path('change-permissions/<int:user_id>/', views.UserPermissionAssignmentAPIView.as_view(), name='set-user-permissions'),
 
     path('access-level/', views.AccessLevelAPIView.as_view(), name='access-level'),
+    path('access-level/<int:access_level_id>/', views.AccessLevelAPIView.as_view(), name='access-level'),
     path('access-level/change/<int:access_id>/', views.AccessLevelAPIView.as_view(), name='access-level'),
 
 

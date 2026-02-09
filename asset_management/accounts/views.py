@@ -161,11 +161,14 @@ class AccessLevelAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
-    def get(self, request):
+    def get(self, request, access_level_id = None):
 
         access_levels = get_accessible_queryset(request, model=AccessLevel)
 
-        serializer = serializers.AccessLevelSerliazlizer(access_levels, many=True)
+        if access_level_id:
+            access_level = get_object_or_404(AccessLevel, id=access_level_id)
+
+        serializer = serializers.AccessLevelSerliazlizer(access_level if access_level_id else access_levels, many=False if access_level_id else True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):
