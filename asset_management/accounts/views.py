@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from core.utils import apply_filters_and_sorting, get_accessible_queryset
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = serializers.MyTokenObtainPairSerializer
  
@@ -102,9 +103,9 @@ class ChangePasswordAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request):
+ 
+        serializer = serializers.ChangePasswordSerializer(instance=request.user, data=request.data, context={'request': request})
         
-        serializer = serializers.ChangePasswordSerializer(data=request.data, context={'request': request})
-
         if serializer.is_valid():
             serializer.save()
             return Response(
@@ -231,8 +232,9 @@ class UserDetailAPIView(APIView):
         serializer = serializers.UserCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            response_serializer = serializers.UserCreateSerializer(user)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            # response_serializer = serializers.UserCreateSerializer(user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -257,6 +259,7 @@ class UserDetailAPIView(APIView):
 
             return Response(serializer.data, status=status.HTTP_200_OK)
         
+        print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, user_id):

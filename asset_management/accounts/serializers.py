@@ -15,6 +15,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['is_staff'] = self.user.is_staff
         data['is_superuser'] = self.user.is_superuser
         data['is_active'] = self.user.is_active
+        data['is_requirement_to_change_the_password'] = self.user.is_requirement_to_change_the_password
 
         all_perms = self.user.get_all_permissions()
         data['permissions'] = [p for p in all_perms if p.startswith('accounts.')] if not data['is_superuser'] else ['*']
@@ -66,8 +67,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-
-    password = serializers.CharField(write_only=True, required=True, min_length=6)
+    
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True, default="")
     groups = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True, required=False)
     user_permissions = serializers.PrimaryKeyRelatedField(queryset=Permission.objects.all(), many=True, required=False)
@@ -80,13 +82,21 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'groups', 'user_permissions', 'is_staff', 'is_active', 'access_level'
         ]
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     request = self.context.get('request')
-    #     if request and hasattr(request, 'access_level'):
-    #         self.fields['user_access_level'].queryset = AccessLevel.objects.filter(
-    #             access_level=request.access_level
-    #         )
+    def validate(self, data):
+        username = data.get('username')
+        if username and User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError({'error': 'نام کاربری قبلا ثبت شده است.'})
+        
+        email = data.get('email')
+        if email and email.strip() != "" and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"error": "این ایمیل قبلاً ثبت شده است."})
+            
+        password = data.get('password')
+        if len(password) < 8:
+            raise serializers.ValidationError({'error': 'رمز عبور باید بیشتر از 8 کارکتر باشد.'})
+        
+        
+        return data
 
     def create(self, validated_data):
         groups_data = validated_data.pop('groups', [])
@@ -95,13 +105,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         
         user = User.objects.create_user(password=password, **validated_data)
+        
         if groups_data:
             user.groups.set(groups_data)
         if permissions_data:
             user.user_permissions.set(permissions_data)
+        
         if access_level_data:
             user.access_level = access_level_data
-            user.save()  # حتماً باید save شود تا تغییرات ذخیره شود
+            user.save() 
         
         return user
 
@@ -149,52 +161,64 @@ class ChangePasswordSerializer(serializers.Serializer):
     
     def validate(self, data):
         
-        if data['new_password'] != data['new_password_confirm']:
-            raise serializers.ValidationError({"new_password_confirm": "رمز عبور جدید و تکرار آن مطابقت ندارند."})
-        
         user = self.context['request'].user
         if not user.is_authenticated:
-             raise serializers.ValidationError("کاربر احراز هویت نشده است.")
+            raise serializers.ValidationError("کاربر احراز هویت نشده است.")
+        
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({"error": "رمز عبور جدید و تکرار آن مطابقت ندارند."})
+        
+        if len(data['new_password']) < 8:
+            raise serializers.ValidationError({'error': 'رمز عبور باید بیشتر از 8 کارکتر باشد.'})
         
         if not user.check_password(data['current_password']):
-            raise serializers.ValidationError({"current_password": "رمز عبور فعلی وارد شده اشتباه است."})
+            raise serializers.ValidationError({"error": "رمز عبور فعلی وارد شده اشتباه است."})
         
         if data['current_password'] == data['new_password']:
-             raise serializers.ValidationError({"new_password": "رمز عبور جدید نمی‌تواند با رمز عبور فعلی یکسان باشد."})
+             raise serializers.ValidationError({"error": "رمز عبور جدید نمی‌تواند با رمز عبور فعلی یکسان باشد."})
              
         return data
     
     def update(self, instance, validated_data):
+
         instance.set_password(validated_data['new_password'])
+
+        if instance.is_requirement_to_change_the_password:
+            instance.is_requirement_to_change_the_password = False
+
         instance.save()
         return instance
 
 
-class ChangeUserPasswordByAdmin(serializers.Serializer):
+# class ChangeUserPasswordByAdmin(serializers.Serializer):
 
-    new_password = serializers.CharField(required=True, style={'input_type': 'password'})
-    new_password_confirm = serializers.CharField(required=True, style={'input_type': 'password'})
+#     new_password = serializers.CharField(required=True, style={'input_type': 'password'})
+#     new_password_confirm = serializers.CharField(required=True, style={'input_type': 'password'})
 
-    def validate(self, data):
+#     def validate(self, data):
         
-        if data['new_password'] != data['new_password_confirm']:
-            raise serializers.ValidationError({'new_password_confim': 'رمز عبور جدید و تکرار آن مطابقت ندارند'})
+#         if data['new_password'] != data['new_password_confirm']:
+#             raise serializers.ValidationError({'new_password_confim': 'رمز عبور جدید و تکرار آن مطابقت ندارند'})
         
-        user = self.context.get('user_instance')
-        if user and user.check_password(data['new_password']):
-            raise serializers.ValidationError({'new_password': 'رمز عبور جدید نمی‌تواند مشابه رمز فعلی باشد'})
+#         user = self.context.get('user_instance')
+#         if user and user.check_password(data['new_password']):
+#             raise serializers.ValidationError({'new_password': 'رمز عبور جدید نمی‌تواند مشابه رمز فعلی باشد'})
         
-        try:
-            validate_password(data['new_password'], user)
-        except Exception as e:
-            raise serializers.ValidationError({'new_password': list(e.messages)})
+#         try:
+#             validate_password(data['new_password'], user)
+#         except Exception as e:
+#             raise serializers.ValidationError({'new_password': list(e.messages)})
 
-        return data
+#         return data
     
-    def update(self, instance, validated_data):
-        instance.set_password(validated_data['new_password'])
-        instance.save()
-        return instance
+#     def update(self, instance, validated_data):
+#         instance.set_password(validated_data['new_password'])
+
+#         if not instance.is_requirement_to_change_the_password:
+#             instance.is_requirement_to_change_the_password = True
+
+#         instance.save()
+#         return instance
 
 
 
@@ -323,9 +347,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     )
    
     groups = GroupsDetailSerializer(many=True, read_only=True)
-    
- 
     user_permissions = PermissionDetailSerializer(many=True, read_only=True)
+
+    new_password = serializers.CharField(required=False, allow_blank=True, write_only=True, style={'input_type': 'password'})
+    new_password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True, style={'input_type': 'password'})
 
     class Meta:
         model = User
@@ -333,15 +358,44 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'phone_number', 
             'first_name', 'last_name', 'is_active', 'is_staff',
             'groups_input', 'user_permissions_input', 'gender',
-            'groups', 'user_permissions', 'access_level'
+            'groups', 'user_permissions', 'access_level', 
+            'new_password', 'new_password_confirm'
         ]
         read_only_fields = ['id']
-
+    
+    def validate(self, data):
+       
+        email = data.get('email')
+        if email and User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+            raise serializers.ValidationError({"error": "این ایمیل قبلاً ثبت شده است."})
+            
+        phone_number = data.get('phone_number')
+        if phone_number and User.objects.filter(phone_number=phone_number).exclude(id=self.instance.id).exists():
+            raise serializers.ValidationError({"error": "این شماره تلفن قبلاً ثبت شده است."})
+        
+        password_changed = data.get('new_password') and data.get('new_password_confirm')
+        if password_changed:
+            if data['new_password'] != data['new_password_confirm']:
+                raise serializers.ValidationError({'error': 'رمز عبور جدید و تکرار آن مطابقت ندارند'})
+            
+            user = self.instance
+            if user and user.check_password(data['new_password']):
+                raise serializers.ValidationError({'error': 'رمز عبور جدید نمی‌تواند مشابه رمز فعلی باشد'})
+            
+            if len(data['new_password']) < 8:
+                raise serializers.ValidationError({'error': 'رمز عبور باید بیشتر از 8 کارکتر باشد.'})
+            
+            data['new_password'] = data.get('new_password')
+            data['new_password_confirm'] = data.get('new_password_confirm')
+        
+        return data
     
     def update(self, instance, validated_data):
-        
+       
         groups_data = validated_data.pop('groups_input', None)
         permissions_data = validated_data.pop('user_permissions_input', None)
+        new_password = validated_data.pop('new_password', None)
+        validated_data.pop('new_password_confirm', None)
         
         instance = super().update(instance, validated_data) 
         
@@ -350,18 +404,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             
         if permissions_data is not None:
             instance.user_permissions.set(permissions_data)
-            
-        return instance
 
-    
-    def validate(self, data):
-       
-        email = data.get('email')
-        if email and User.objects.filter(email=email).exclude(id=self.instance.id).exists():
-            raise serializers.ValidationError({"email": "این ایمیل قبلاً ثبت شده است."})
-            
-        phone_number = data.get('phone_number')
-        if phone_number and User.objects.filter(phone_number=phone_number).exclude(id=self.instance.id).exists():
-             raise serializers.ValidationError({"phone_number": "این شماره تلفن قبلاً ثبت شده است."})
+        if new_password is not None:
+            instance.set_password(new_password)
+
+            if not instance.is_requirement_to_change_the_password:
+                instance.is_requirement_to_change_the_password = True
         
-        return data
+        instance.save()
+        return instance

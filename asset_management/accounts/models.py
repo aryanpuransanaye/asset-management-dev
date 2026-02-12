@@ -59,7 +59,7 @@ class User(AbstractUser):
     otp_created_at = models.DateTimeField(blank=True, null=True, verbose_name='زمان ایجاد کد تایید')
 
     #change password
-    requirement_to_change_the_password = models.BooleanField(default=False, verbose_name="اجبار برای تغییر رمز عبور")
+    is_requirement_to_change_the_password = models.BooleanField(default=True, verbose_name="اجبار برای تغییر رمز عبور")
 
 
     #for Active Direcory's users
