@@ -1,7 +1,10 @@
 from django.db import models
 from django_jalali.db import models as jmodels
-
+from accounts.models import AccessLevel,  User
 class Organization(models.Model):
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='کاربر')
+    access_level = models.ForeignKey(AccessLevel, on_delete=models.SET_NULL, null=True, blank=True, related_name="organization", verbose_name='سطح دسترسی')
 
     name = models.CharField(max_length=100, verbose_name='نام سازمان')
     description = models.TextField(blank=True, null=True, verbose_name='توضیحات')

@@ -25,8 +25,16 @@ class OrganizationCreateUpdate(serializers.ModelSerializer):
         model = Organization
         fields = [
             'name', 'description', 'address', 'phone_number',
-            'email', 'website'
+            'email', 'website',
         ]
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['user'] = request.user
+            validated_data['access_level'] = request.user.access_level
+
+        return super().create(validated_data)
 
 
 

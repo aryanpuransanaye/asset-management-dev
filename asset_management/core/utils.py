@@ -44,17 +44,18 @@ def apply_filters_and_sorting(request, sorting_fields:list, allowed_filters: lis
         foreign_key_fields = [f.name for f in model._meta.get_fields() if isinstance(f, ForeignKey)]
     except:
         foreign_key_fields = [f.name for f in query_set if isinstance(f, ForeignKey)]
-        
-    applied_filters = {}
-    for field in allowed_filters:
-        value = request.GET.get(field)
-        if value and value.strip() and value != 'null':
-            if field in foreign_key_fields:
-                applied_filters[f"{field}_id"] = value
-            else:
-                applied_filters[field] = value
     
-    request.session[f'{session_key}_applied_filters'] = applied_filters
+    if allowed_filters:
+        applied_filters = {}
+        for field in allowed_filters:
+            value = request.GET.get(field)
+            if value and value.strip() and value != 'null':
+                if field in foreign_key_fields:
+                    applied_filters[f"{field}_id"] = value
+                else:
+                    applied_filters[field] = value
+        
+        request.session[f'{session_key}_applied_filters'] = applied_filters
 
     search_query = request.GET.get('q')
     search_filter = Q()
@@ -66,7 +67,10 @@ def apply_filters_and_sorting(request, sorting_fields:list, allowed_filters: lis
     if query_set is None and model is not None:
         query_set = get_accessible_queryset(request, model)
     
-    query = query_set.filter(search_filter, **applied_filters).order_by(final_sort)
+    if allowed_filters:
+        query = query_set.filter(search_filter, **applied_filters).order_by(final_sort)
+    else:
+        query = query_set.filter(search_filter).order_by(final_sort)
     
     return query
 

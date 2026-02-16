@@ -1,22 +1,23 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import Organization, SubOrganization
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
 from django.shortcuts import get_object_or_404
-# import openpyxl, jdatetime
-# from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from .utils import get_organization_config, get_sub_organization_config
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 # from core.permissions import DynamicSystemPermission
 
 
 ###ORGANIZATION###
 
+organization_config = get_organization_config()
+
 class OrganizationSummaryAPIView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
 
@@ -29,18 +30,40 @@ class OrganizationSummaryAPIView(APIView):
         return Response(summary_data, status=status.HTTP_200_OK)
 
 
+# class OrganizationsMetaDataAPIView(BaseMetaDataAPIView):
+
+#     model = Organization
+#     search_fields = ['email', 'address', 'phone_number']
+
 class OrganizationListAPIView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
     def get(self, request):
         
-        organizations = Organization.objects.all()
-        serializer = serializers.OrganizationListSerializer(organizations, many=True)
+        organizations = apply_filters_and_sorting(
+            request,
+            organization_config['sorting'],
+            organization_config['filters'],
+            organization_config['search'],
+            session_key='organization',
+            model=Organization
+        ).select_related('user', 'access_level')
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        paginator = set_paginator(request, organizations)
+        serializer = serializers.OrganizationListSerializer(paginator['data'], many=True)
+
+        return Response({
+            'results': serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
     
 
 class OrganizationAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request, organization_id):
 
@@ -52,7 +75,7 @@ class OrganizationAPIView(APIView):
         
         serializer = serializers.OrganizationCreateUpdate(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user, access_level=request.user.access_level)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -88,7 +111,11 @@ class OrganizationAPIView(APIView):
 
 ###SUB ORGANIZATION###
 
+sub_organization_config = get_sub_organization_config()
+
 class SubOrganizationSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request, organization_id):
 
@@ -104,17 +131,37 @@ class SubOrganizationSummaryAPIView(APIView):
 
 class SubOrganizationListAPIView(APIView):
 
+    permission_classes = [IsAuthenticated, IsAuthenticated]
+
     def get(self, request, organization_id):
 
         organization = get_object_or_404(Organization, id = organization_id)
         sub_organization = SubOrganization.objects.all().filter(organization = organization)
-        serializer = serializers.SubOrganizationListSerializer(sub_organization, many = True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        sub_organizations = apply_filters_and_sorting(
+            request,
+            sub_organization_config['sorting'],
+            sub_organization_config['filters'],
+            sub_organization_config['search'],
+            session_key='sub-organization',
+            query_set=sub_organization
+        )
+
+        paginator = set_paginator(request, sub_organizations)
+        serializer = serializers.SubOrganizationListSerializer(paginator['data'], many=True)
+
+        return Response({
+            'results': serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
     
 
 
 class SubOrganizationAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, IsAuthenticated]
 
     def get(self, request, sub_organization_id):
 
