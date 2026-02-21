@@ -6,8 +6,19 @@ from django.shortcuts import get_object_or_404
 from .models import ActiveDirectory
 from . import serializers
 import ldap3
-from core.utils import get_accessible_queryset
+from core.utils import get_accessible_queryset, apply_filters_and_sorting, set_paginator, BaseMetaDataAPIView
 from accounts.permissions import IsStaffOrSuperuser
+from .utils import get_active_directory_config
+
+
+config = get_active_directory_config()
+
+class DataInformationMetaDataAPIView(BaseMetaDataAPIView):
+
+    
+    model = ActiveDirectory
+    fields_map = {field:field for field in config['filters']}
+    search_fields = config['search']
 
 class ActiveDirectoryListAPIView(APIView):
 
@@ -15,10 +26,23 @@ class ActiveDirectoryListAPIView(APIView):
 
     def get(self, request):
 
-        activate_directories = get_accessible_queryset(request, model=ActiveDirectory)
-        serializer = serializers.ActiveDirectorySerializer(activate_directories, many = True)
-
-        return Response(serializer.data)
+        active_directoires = apply_filters_and_sorting(
+            request, 
+            config['sorting'], 
+            config['filters'], 
+            config['search'], 
+            session_key='active_directory', 
+            model=ActiveDirectory
+        ).select_related('access_level')
+        paginator = set_paginator(request, active_directoires)
+        serializer = serializers.ActiveDirectorySerializer(paginator['data'], many=True)
+        
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items']
+        }, status=status.HTTP_200_OK)
     
 
 class ActiveDirectoryAPIView(APIView):
@@ -47,7 +71,7 @@ class ActiveDirectoryAPIView(APIView):
         serializer = serializers.ActiveDirectorySerializer(active_directory, data = request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status = status.HTTP_201_CREATED)
+            return Response(serializer.data, status = status.HTTP_200_OK)
         
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
     
@@ -57,7 +81,6 @@ class ActiveDirectoryAPIView(APIView):
         if not ids_to_delete:
             return Response({'errors': 'there is not id to delete'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # accessible_queryset = get_accessible_queryset(request, model=Hardware)
         active_directories = ActiveDirectory.objects.filter(id__in = ids_to_delete)
 
         if not active_directories.exists():

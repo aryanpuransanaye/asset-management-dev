@@ -35,7 +35,7 @@ class SoftwareSummaryAPIView(APIView):
         recent_item = accessible_queryset.order_by('-created_at').first()
         
         summary_data = [
-            {'label': 'تعداد نرم‌افزارها', 'value': total_count, 'color': 'purple'},
+            {'label': 'تعداد کل', 'value': total_count, 'color': 'purple'},
             {'label': 'مجوز منقضی شده', 'value': software['license_expired_count'], 'color': 'red'},
             {'label': 'مجوز معتبر', 'value': software['license_not_expired_count'], 'color': 'green'},
             {'label': 'جدیدترین', 'value': recent_item.ipaddress if recent_item and recent_item.ipaddress else 'بدون ip آدرس', 'color' : 'pink'}

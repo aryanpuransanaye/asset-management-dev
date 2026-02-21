@@ -12,6 +12,8 @@ class ActiveDirectory(models.Model) :
 
     access_level = models.ForeignKey('accounts.AccessLevel', verbose_name='سطح دسترسی', on_delete=models.CASCADE)
 
+    created_at = jmodels.jDateField(auto_now_add=True, null=True, blank=True, verbose_name='زمان ایجاد')
+
     def __str__(self):
         return str(self.server_address)
     

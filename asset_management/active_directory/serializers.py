@@ -24,15 +24,28 @@ from accounts.models import User
 
 
 class ActiveDirectorySerializer(serializers.ModelSerializer):
+    password = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = ActiveDirectory
         fields = [
             'id', 'server_address', 'domain_name', 
             'username', 'password', 'port', 'search_base'
         ]
-        extra_kwargs = {
-            'password': {'write_only': True},
-        }
+        # extra_kwargs = {
+        #     'password': {'write_only': T},
+        # }
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if password:
+            instance.password = password
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 class CreateScannedADUserSerializer(serializers.ModelSerializer):
     class Meta:

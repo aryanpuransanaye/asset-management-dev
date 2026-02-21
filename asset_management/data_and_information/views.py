@@ -32,7 +32,7 @@ class DataAndInformationSummaryAPIView(APIView):
         )
 
         summary_data =[
-            {'label': 'کل', 'value': total_count, 'color': 'blue'},
+            {'label': 'تعداد کل', 'value': total_count, 'color': 'blue'},
             {'label': 'خصوصی', 'value': data_and_informations['private_count'], 'color': 'red'},
             {'label': 'محرمانه', 'value': data_and_informations['confidential_count'], 'color': 'orange'},
             {'label': 'عمومی', 'value': data_and_informations['public_count'], 'color': 'green'},
