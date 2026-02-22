@@ -122,23 +122,26 @@ class ActiveDirectoryTestConnectionAPIView(APIView):
             )
 
             return Response({
-                "message": "اتصال با موفقیت برقرار شد. نام کاربری و رمز عبور صحیح است.",
+                "message": "اتصال با موفقیت برقرار شد.",
                 "status": "success"
             }, status=status.HTTP_200_OK)
 
         except ldap3.core.exceptions.LDAPBindError:
+            print('ok')
             return Response({
                 "errors": "خطا در احراز هویت: نام کاربری یا رمز عبور اشتباه است.",
                 "status": "auth_error"
             }, status=status.HTTP_400_BAD_REQUEST)
             
-        except ldap3.core.exceptions.LDAPNetworkError:
+        except ldap3.core.exceptions.LDAPCursorError:
+            print('ok2')
             return Response({
                 "errors": "خطا در شبکه: سرور در دسترس نیست یا پورت بسته است.",
                 "status": "network_error"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            print('ok3')
             return Response({
                 "errors": f"خطای نامشخص: {str(e)}",
                 "status": "error"

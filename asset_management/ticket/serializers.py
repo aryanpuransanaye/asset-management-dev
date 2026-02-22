@@ -125,6 +125,7 @@ class MessageCategoryCreateUpdateSerializer(serializers.ModelSerializer):
 
 #QUESTIONS
 class QuestionsListSerializer(serializers.ModelSerializer):
+    created_at = serializers.SerializerMethodField()
     class Meta:
         model = Question
         fields = [
@@ -133,13 +134,14 @@ class QuestionsListSerializer(serializers.ModelSerializer):
 
     def get_created_at(self, obj):
         if obj.created_at:
-            return obj.created_at.strftime('%Y/%m/%d')
+            return obj.created_at.strftime('%Y/%m/%d %H:%M:%S')
         return None
 
 
 class QuestionsDetailSerializer(serializers.ModelSerializer):
 
     username = username = serializers.ReadOnlyField(source='user.username')
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Question

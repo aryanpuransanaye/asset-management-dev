@@ -8,6 +8,9 @@ class Question(models.Model):
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name="زمان ایجاد")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='questions', verbose_name="کاربر")
 
+    access_level = models.ForeignKey(AccessLevel, on_delete=models.PROTECT, blank=True, null=True, verbose_name="سطح دسترسی")
+
+
     def __str__(self):
         return self.text
 

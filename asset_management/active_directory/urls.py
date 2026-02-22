@@ -12,8 +12,8 @@ urlpatterns = [
     path('active-directory/', views.ActiveDirectoryAPIView.as_view(), name='active-directory'),
 
     #test
-    path('active-directory-test/<int:active_directory_id>/', views.ActiveDirectoryTestConnectionAPIView.as_view(), name='active-directory-test'),
+    path('active-directory/test-connection/<int:active_directory_id>/', views.ActiveDirectoryTestConnectionAPIView.as_view(), name='active-directory-test'),
 
     #scan
-    path('active-directory-scan/<int:active_directory_id>/', views.ActiveDirectoryScannerAPIView.as_view(), name='active-directory-scan'),
+    path('active-directory/scan/<int:active_directory_id>/', views.ActiveDirectoryScannerAPIView.as_view(), name='active-directory-scan'),
 ]

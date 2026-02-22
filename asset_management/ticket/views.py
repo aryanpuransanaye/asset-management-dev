@@ -9,8 +9,8 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q, Count
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
-
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
+from .utils import get_question_config
 
 #ticket
 
@@ -148,18 +148,33 @@ class MessageCategoryAPIView(APIView):
 
 
 
-
 # QUESTIONS
+
+question_config = get_question_config()
+
 class QuestionListAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         
-        questions = Question.objects.all()
-        serializer = serializers.QuestionsListSerializer(questions, many=True)
+        questions = apply_filters_and_sorting(
+            request, 
+            question_config['sorting'], 
+            question_config['filters'], 
+            question_config['search'],  
+            session_key='question',
+            model=Question
+        ).select_related('user', 'access_level')
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        paginator = set_paginator(request, questions)
+        serializer = serializers.QuestionsListSerializer(paginator['data'], many=True)
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
     
 class QuestionAPIView(APIView):
 
@@ -177,7 +192,7 @@ class QuestionAPIView(APIView):
         
         serializer = serializers.QuestionCreateUpdate(data = request.data)
         if serializer.is_valid():
-            serializer.save(user=request.user)
+            serializer.save(user=request.user, access_level=request.user.access_level)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
