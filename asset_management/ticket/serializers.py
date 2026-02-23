@@ -57,6 +57,9 @@ class TicketDetailSerializer(serializers.ModelSerializer):
 class TicketCreateUpdateSerializer(serializers.ModelSerializer):
 
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all(), allow_null=True, required=False)
+    category = serializers.PrimaryKeyRelatedField(queryset=TicketCategory.objects.all(), allow_null=True, required=False)
+
     class Meta:
         model = TicketRoom
         fields = [
@@ -65,15 +68,26 @@ class TicketCreateUpdateSerializer(serializers.ModelSerializer):
             'priority', 'category', 'related_asset_id', 'related_asset_category'
         ]
 
+    # def __init__(self, *args, **kwargs):
+    #     user = kwargs.pop('user', None)
+    #     super().__init__(*args, **kwargs)
+
+    #     if user:
+    #         self.fields['question'].queryset = Question.objects.filter(
+    #             access_level__in=user.access_level.get_descendants(include_self=True)
+    #         )
+    #         self.fields['category'].queryset = TicketCategory.objects.filter(
+    #             access_level__in=user.access_level.get_descendants(include_self=True)
+    #         )
 
 
 #MESSAGE CATEGORY
-class MessageCategoryListSerializer(serializers.ModelSerializer):
+class TicketCategoryListSerializer(serializers.ModelSerializer):
 
     username = serializers.ReadOnlyField(source='user.username')
 
     class Meta:
-        model = MessageCategory
+        model = TicketCategory
         fields = [
             'id', 'username', 'text', 'created_at'
         ]
@@ -84,14 +98,15 @@ class MessageCategoryListSerializer(serializers.ModelSerializer):
         return None
 
 
-class MessageCategoryDetailSerializer(serializers.ModelSerializer):
+class TicketCategoryDetailSerializer(serializers.ModelSerializer):
 
     username = serializers.ReadOnlyField(source='user.username')
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
-        model = MessageCategory
+        model = TicketCategory
         fields = [
-            'username', 'text', 'created_at'
+            'text', 'created_at', 'username'
         ]
 
     def get_created_at(self, obj):
@@ -100,27 +115,28 @@ class MessageCategoryDetailSerializer(serializers.ModelSerializer):
         return None
     
 
-class MessageCategoryCreateUpdateSerializer(serializers.ModelSerializer):
+class TicketCategoryCreateUpdateSerializer(serializers.ModelSerializer):
 
-    model = MessageCategory
-    fields = [
-        'text'
-    ]
+    class Meta:
+        model = TicketCategory
+        fields = [
+            'text'
+        ]
 
-    def validate_text(self, value):
-    
-        normalized_text = value.strip()
+        # def validate_text(self, value):
         
-        instance = getattr(self, 'instance', None)
-        
-        mc = MessageCategory.objects.filter(text__iexact=normalized_text)
-        if instance:
-            mc = mc.exclude(pk=instance.pk)
-
-        if mc.exists():
-            raise serializers.ValidationError("این دسته بندی پیام قبلاً در سیستم ثبت شده است.")
+        #     normalized_text = value.strip()
             
-        return normalized_text
+        #     instance = getattr(self, 'instance', None)
+            
+        #     mc = TicketCategory.objects.filter(text__iexact=normalized_text)
+        #     if instance:
+        #         mc = mc.exclude(pk=instance.pk)
+
+        #     if mc.exists():
+        #         raise serializers.ValidationError("این دسته بندی تیکت قبلاً در سیستم ثبت شده است.")
+                
+        #     return normalized_text
 
 
 #QUESTIONS

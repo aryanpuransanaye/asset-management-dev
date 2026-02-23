@@ -19,7 +19,7 @@ def get_accessible_queryset(request, model=None, queryset=None):
     allowed_levels = user.access_level.get_descendants(include_self=True)
 
     # Special case for AccessLevel model - it doesn't have access_level field
-    from accounts.models import AccessLevel
+  
     if (model and model.__name__ == 'AccessLevel') or (queryset and queryset.model.__name__ == 'AccessLevel'):
         # Return access levels that are descendants of or equal to user's access level
         if queryset is not None:
@@ -43,7 +43,7 @@ def apply_filters_and_sorting(request, sorting_fields:list, allowed_filters: lis
     try:
         foreign_key_fields = [f.name for f in model._meta.get_fields() if isinstance(f, ForeignKey)]
     except:
-        foreign_key_fields = [f.name for f in query_set if isinstance(f, ForeignKey)]
+        foreign_key_fields = [f.name for f in query_set.model._meta.get_fields() if isinstance(f, ForeignKey)]
     
     if allowed_filters:
         applied_filters = {}
@@ -65,7 +65,9 @@ def apply_filters_and_sorting(request, sorting_fields:list, allowed_filters: lis
             search_filter |= Q(**{f"{field}__icontains": search_query})
 
     if query_set is None and model is not None:
-        query_set = get_accessible_queryset(request, model)
+        query_set = get_accessible_queryset(request, model=model)
+    else:
+        query_set = get_accessible_queryset(request, queryset=query_set)
     
     if allowed_filters:
         query = query_set.filter(search_filter, **applied_filters).order_by(final_sort)

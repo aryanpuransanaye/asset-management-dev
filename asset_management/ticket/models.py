@@ -15,11 +15,14 @@ class Question(models.Model):
         return self.text
 
 
-class MessageCategory(models.Model):
+class TicketCategory(models.Model):
     
     text = models.CharField(max_length=100, unique=True, verbose_name="عنوان دسته بندی")
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name="زمان ایجاد")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='message_category', verbose_name="کاربر")
+
+    access_level = models.ForeignKey(AccessLevel, on_delete=models.PROTECT, blank=True, null=True, verbose_name="سطح دسترسی")
+
 
     def __str__(self):
         return self.text
@@ -59,7 +62,7 @@ class TicketRoom(models.Model):
     priority = models.CharField(choices=PRIORITY_CHOICES, max_length=1, default='1', verbose_name="اولویت")
     access_level = models.ForeignKey(AccessLevel, on_delete=models.PROTECT, blank=True, null=True, verbose_name="سطح دسترسی")
 
-    category = models.ForeignKey(MessageCategory, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="دسته بندی پیام")
+    category = models.ForeignKey(TicketCategory, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="دسته بندی پیام")
     related_asset_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="آیدی دارایی مرتبط")
     related_asset_category = models.CharField(choices=ASSET_CATEGORIES, max_length=2, blank=True, null=True, verbose_name="گروه دارایی مرتبط")
 

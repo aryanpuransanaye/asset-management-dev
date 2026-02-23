@@ -1,6 +1,6 @@
 from rest_framework import permissions
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import TicketRoom, Question, MessageCategory, TicketMessage
+from rest_framework.permissions import IsAuthenticated
+from .models import TicketRoom, Question, TicketCategory, TicketMessage
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,8 +9,8 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q, Count
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
-from .utils import get_question_config
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator
+from .utils import get_question_config, get_ticket_category_config
 
 #ticket
 
@@ -36,17 +36,57 @@ class TicketSummaryAPIView(APIView):
         return Response(summary_data, status=status.HTTP_200_OK)
     
 
-class TicketListAPIView(APIView):
+class UserTicketListAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
-        tickets = accessible_queryset
-        serializer = serializers.TicketListSerializer(tickets, many=True)
+        
+        accessable_ticket = TicketRoom.objects.filter(user=request.user)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        ticket_rooms = apply_filters_and_sorting(
+            request, 
+            ticket_category_config['sorting'], 
+            ticket_category_config['filters'], 
+            ticket_category_config['search'],  
+            session_key='ticket_category',
+            query_set=accessable_ticket
+        ).select_related('user', 'access_level')
 
+        paginator = set_paginator(request, ticket_rooms)
+        serializer = serializers.TicketListSerializer(paginator['data'], many=True)
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
+
+
+class SupportTicketListAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        ticket_rooms = apply_filters_and_sorting(
+            request, 
+            ticket_category_config['sorting'], 
+            ticket_category_config['filters'], 
+            ticket_category_config['search'],  
+            session_key='ticket_category',
+            model=TicketRoom
+        ).select_related('user', 'access_level')
+
+        paginator = set_paginator(request, ticket_rooms)
+        serializer = serializers.TicketListSerializer(paginator['data'], many=True)
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
+        
 
 class TicketAPIView(APIView):
 
@@ -64,7 +104,7 @@ class TicketAPIView(APIView):
 
         serializer = serializers.TicketCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
-            target_user = serializer.validate_data.get('user')
+            target_user = serializer.validated_data.get('user')
 
             if target_user:
                 ticket_owner = target_user
@@ -91,39 +131,56 @@ class TicketAPIView(APIView):
 
 
 
-#message Category
-class MessageCategoryList(APIView):
+#Ticket Category
+
+ticket_category_config = get_ticket_category_config()
+class TicketCategoryList(APIView):
 
     def get(self, request):
-        message_categories = MessageCategory.objects.all()
-        serializer = serializers.MessageCategoryListSerializer(message_categories, many = True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        questions = apply_filters_and_sorting(
+            request, 
+            ticket_category_config['sorting'], 
+            ticket_category_config['filters'], 
+            ticket_category_config['search'],  
+            session_key='ticket_category',
+            model=TicketCategory
+        ).select_related('user', 'access_level')
+
+        paginator = set_paginator(request, questions)
+        serializer = serializers.QuestionsListSerializer(paginator['data'], many=True)
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
     
 
-class MessageCategoryAPIView(APIView):
+class TicketCategoryAPIView(APIView):
 
-    def get(self, request, message_category_id):
+    def get(self, request, ticket_category_id):
         
-        message_category = get_object_or_404(MessageCategory, id = message_category_id)
-        serializer = serializers.MessageCategoryDetailSerializer(message_category)
+        message_category = get_object_or_404(TicketCategory, id = ticket_category_id)
+        serializer = serializers.TicketCategoryDetailSerializer(message_category)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
     def post(self, request):
 
-        serializer = serializers.MessageCategoryCreateUpdateSerializer(data=request.data)
+        serializer = serializers.TicketCategoryCreateUpdateSerializer(data=request.data)
+        
         if serializer.is_valid():
-            serializer.save(user = request.user)
+            serializer.save(user = request.user, access_level = request.user.access_level)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, message_category_id):
+    def patch(self, request, ticket_category_id):
 
-        message_category = get_object_or_404(MessageCategory, id = message_category_id)
-        serializer = serializers.MessageCategoryCreateUpdateSerializer(message_category ,data=request.data, partial = True)
+        message_category = get_object_or_404(TicketCategory, id = ticket_category_id)
+        serializer = serializers.TicketCategoryCreateUpdateSerializer(message_category ,data=request.data, partial = True)
         if serializer.is_valid():
             serializer.save(user = request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -136,13 +193,13 @@ class MessageCategoryAPIView(APIView):
         if not ids_to_delete:
             return Response({'errors': 'there is not id to delete'}, status=status.HTTP_400_BAD_REQUEST)
         
-        message_category = Question.objects.filter(id__in = ids_to_delete)
+        ticket_category = TicketCategory.objects.filter(id__in = ids_to_delete)
 
-        if not message_category.exists():
+        if not ticket_category.exists():
             return Response({'errors': "not found any object to delete"}, status=status.HTTP_404_NOT_FOUND)
         
     
-        deleted_count, _ = message_category.delete()
+        deleted_count, _ = ticket_category.delete()
 
         return Response({'message': f"{deleted_count} objects are deleted"}, status=status.HTTP_200_OK)
 

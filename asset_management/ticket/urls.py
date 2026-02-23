@@ -9,7 +9,9 @@ urlpatterns = [
     path('ticket/summary/', views.TicketSummaryAPIView.as_view(), name='ticket-summary'),
 
     #ticket list
-    path('ticket/list/', views.TicketListAPIView.as_view(), name='ticket-list'),
+    path('user/ticket/list/', views.UserTicketListAPIView.as_view(), name='ticket-list'),
+    path('support-management/ticket/list/', views.SupportTicketListAPIView.as_view(), name='support-ticket-list'),
+
     #create
     path('ticket/', views.TicketAPIView.as_view(), name = 'ticket'),
 
@@ -17,16 +19,16 @@ urlpatterns = [
     path('ticket/<int:ticket_id>/', views.TicketAPIView.as_view(), name='ticket'),
 
 
-    ###MESSAGE CATEGORY###
+    ###Ticket CATEGORY###
 
     #question list
-    path('message-category/list/', views.MessageCategoryList.as_view(), name='message-category-list'),
+    path('ticket-category/list/', views.TicketCategoryList.as_view(), name='message-category-list'),
 
     #create or delete
-    path('message-category/', views.MessageCategoryAPIView.as_view(), name='message-category'),
+    path('ticket-category/', views.TicketCategoryAPIView.as_view(), name='message-category'),
 
     #detail or update
-    path('message-category/<int:question_id>/', views.MessageCategoryAPIView.as_view(), name='message-category'),
+    path('ticket-category/<int:ticket_category_id>/', views.TicketCategoryAPIView.as_view(), name='message-category'),
 
 
     ###QUESTION###
