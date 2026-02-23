@@ -6,7 +6,8 @@ urlpatterns = [
     ###TICKETS###
 
     #summary
-    path('ticket/summary/', views.TicketSummaryAPIView.as_view(), name='ticket-summary'),
+    path('support-management/ticket/summary/', views.SupportTicketSummaryAPIView.as_view(), name='ticket-summary'),
+    path('user/ticket/summary/', views.UserTicketSummaryAPIView.as_view(), name='ticket-summary'),
 
     #ticket list
     path('user/ticket/list/', views.UserTicketListAPIView.as_view(), name='ticket-list'),

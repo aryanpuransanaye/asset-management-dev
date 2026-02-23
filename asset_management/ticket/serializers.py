@@ -15,12 +15,17 @@ class TicketListSerializer(serializers.ModelSerializer):
     
     question_text = serializers.ReadOnlyField(source='question.text')
 
+    category_text = serializers.ReadOnlyField(source='category.text')
+
+    created_at = serializers.SerializerMethodField()
+
+
     class Meta:
         model = TicketRoom
         fields = [
-            'id', 'username', 'user_info_summary', 'question', 'question_text', 
+            'id', 'username', 'user_info_summary', 'question_text', 
             'is_active', 'requires_password_reset', 'additional_details',
-            'priority_name', 'access_level_name', 'category', 
+            'priority_name', 'access_level_name', 'category', 'category_text',
             'related_asset_id', 'related_asset_category', 'assets_category_name', 'created_at'
         ]
 
@@ -45,7 +50,8 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketRoom
         fields = [
-            'priority_name', 'question_text', 'is_active', 'username', 'created_at'
+            'priority', 'question_text', 'is_active', 'username', 'created_at',
+            'priority_name',
         ]
 
     def get_created_at(self, obj):
@@ -54,7 +60,16 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         return None
     
 
-class TicketCreateUpdateSerializer(serializers.ModelSerializer):
+class TicketUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TicketRoom
+        fields = [
+            'is_active', 'priority',
+        ]
+
+
+class TicketCreateSerializer(serializers.ModelSerializer):
 
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
     question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all(), allow_null=True, required=False)

@@ -10,11 +10,12 @@ import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q, Count
 from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator
-from .utils import get_question_config, get_ticket_category_config
+from .utils import get_question_config, get_ticket_category_config, get_ticket_config
 
 #ticket
+ticket_config = get_ticket_config()
 
-class TicketSummaryAPIView(APIView):
+class SupportTicketSummaryAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -22,12 +23,14 @@ class TicketSummaryAPIView(APIView):
         accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
 
         ticket_details = accessible_queryset.aggregate(
+
             total_tickets_count =  Count('id'),
             open_tickets_count = Count('id', filter=Q(is_active=True)),
             closed_tickets_count = Count('id', filter=Q(is_active=False)),
         )
 
         summary_data = [
+
             {'label': 'تعداد کل تیکت‌ها', 'value': ticket_details['total_tickets_count'], 'color': 'blue'},
             {'label': 'تیکت‌های باز', 'value': ticket_details['open_tickets_count'], 'color': 'green'},
             {'label': 'تیکت‌های بسته شده', 'value': ticket_details['closed_tickets_count'], 'color': 'red'},
@@ -35,7 +38,59 @@ class TicketSummaryAPIView(APIView):
 
         return Response(summary_data, status=status.HTTP_200_OK)
     
+class SupportTicketListAPIView(APIView):
 
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        ticket_rooms = apply_filters_and_sorting(
+            request, 
+            ticket_config['sorting'], 
+            ticket_config['filters'], 
+            ticket_config['search'],  
+            session_key='ticket_category',
+            model=TicketRoom
+        ).select_related('user', 'access_level')
+
+        paginator = set_paginator(request, ticket_rooms)
+        serializer = serializers.TicketListSerializer(paginator['data'], many=True)
+
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
+
+
+class UserTicketSummaryAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
+
+        ticket_details = accessible_queryset.aggregate(
+            user_total_ticket_count = Count('id', filter=Q(user=request.user)),
+            user_total_open_ticket = Count('id', filter=Q(user=request.user, is_active=True)),
+            user_total_closed_ticket = Count('id', filter=Q(user=request.user, is_active=False)),
+
+            total_tickets_count =  Count('id'),
+            open_tickets_count = Count('id', filter=Q(is_active=True)),
+            closed_tickets_count = Count('id', filter=Q(is_active=False)),
+        )
+
+        summary_data = [
+
+            {'label': 'تعداد کل تیکت‌های من', 'value': ticket_details['user_total_ticket_count'], 'permission': 'ticket_can_response_to_tickets', 'color': 'blue'},
+            {'label': 'تعداد کل تیکت‌های باز من', 'value': ticket_details['user_total_open_ticket'], 'permission': 'ticket_can_response_to_tickets', 'color': 'green'},
+            {'label': 'تعداد کل تیکت‌های بسته من', 'value': ticket_details['user_total_closed_ticket'], 'permission': 'ticket_can_response_to_tickets', 'color': 'red'},
+
+        ]
+
+        return Response(summary_data, status=status.HTTP_200_OK)
+    
 class UserTicketListAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -46,9 +101,9 @@ class UserTicketListAPIView(APIView):
 
         ticket_rooms = apply_filters_and_sorting(
             request, 
-            ticket_category_config['sorting'], 
-            ticket_category_config['filters'], 
-            ticket_category_config['search'],  
+            ticket_config['sorting'], 
+            ticket_config['filters'], 
+            ticket_config['search'],  
             session_key='ticket_category',
             query_set=accessable_ticket
         ).select_related('user', 'access_level')
@@ -63,29 +118,6 @@ class UserTicketListAPIView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class SupportTicketListAPIView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        ticket_rooms = apply_filters_and_sorting(
-            request, 
-            ticket_category_config['sorting'], 
-            ticket_category_config['filters'], 
-            ticket_category_config['search'],  
-            session_key='ticket_category',
-            model=TicketRoom
-        ).select_related('user', 'access_level')
-
-        paginator = set_paginator(request, ticket_rooms)
-        serializer = serializers.TicketListSerializer(paginator['data'], many=True)
-        return Response({
-            'results':serializer.data,
-            'total_pages': paginator['total_pages'],
-            'current_page': paginator['current_page'],
-            'total_items': paginator['total_items'],
-        }, status=status.HTTP_200_OK)
         
 
 class TicketAPIView(APIView):
@@ -102,13 +134,13 @@ class TicketAPIView(APIView):
     
     def post(self, request):
 
-        serializer = serializers.TicketCreateUpdateSerializer(data=request.data)
+        serializer = serializers.TicketCreateSerializer(data=request.data)
         if serializer.is_valid():
             target_user = serializer.validated_data.get('user')
 
             if target_user:
                 ticket_owner = target_user
-                user_info = f'ساخته شده برای {request.user.username}'
+                user_info = f'ساخته شده برای {ticket_owner.username}'
             else:
                 ticket_owner = request.user
                 user_info = f'ساخته شده برای خود کاربر'
@@ -122,7 +154,7 @@ class TicketAPIView(APIView):
         
         accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
         ticket = get_object_or_404(accessible_queryset, id = ticket_id)
-        serializer = serializers.TicketCreateUpdateSerializer(ticket, data=request.data, partial = True)
+        serializer = serializers.TicketUpdateSerializer(ticket, data=request.data, partial = True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
