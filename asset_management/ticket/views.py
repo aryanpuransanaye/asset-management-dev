@@ -118,8 +118,6 @@ class UserTicketListAPIView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-        
-
 class TicketAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -160,6 +158,22 @@ class TicketAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, *args, **kwargs):
+        
+        ids_to_delete = request.data.get('ids', [])
+        if not ids_to_delete:
+            return Response({'errors': 'there is not id to delete'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        accessible_queryset = get_accessible_queryset(request, model=TicketRoom)
+        ticket_rooms = accessible_queryset.filter(id__in = ids_to_delete)
+
+        if not ticket_rooms.exists():
+            return Response({'errors': "not found anything to delete"}, status=status.HTTP_404_NOT_FOUND)
+        
+        deleted_count, _ = ticket_rooms.delete()
+
+        return Response({'message': f"{deleted_count} things are deleted"}, status=status.HTTP_200_OK)
 
 
 

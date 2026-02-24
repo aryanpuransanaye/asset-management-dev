@@ -13,7 +13,7 @@ urlpatterns = [
     path('user/ticket/list/', views.UserTicketListAPIView.as_view(), name='ticket-list'),
     path('support-management/ticket/list/', views.SupportTicketListAPIView.as_view(), name='support-ticket-list'),
 
-    #create
+    #create or delete
     path('ticket/', views.TicketAPIView.as_view(), name = 'ticket'),
 
     #update or detail

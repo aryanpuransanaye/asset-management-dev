@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 import openpyxl, jdatetime
 from django.http import HttpResponse
 from django.db.models import Q
-from core.utils import apply_filters_and_sorting, get_accessible_queryset, BaseMetaDataAPIView
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator, BaseMetaDataAPIView
 from core.permissions import DynamicSystemPermission
 from .utils import get_place_and_area_config
 
@@ -64,10 +64,14 @@ class PlacesAndAreasListAPIView(APIView):
             'access_level'
         )
 
-        serializer = serializers.ListSerializer(places_and_areas, many=True)
+        paginator = set_paginator(request, places_and_areas)
+        serializer = serializers.ListSerializer(paginator['data'], many=True)
         columns = serializers.ListSerializer.get_active_columns()
         return Response({
             'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
             'columns': columns
         }, status=status.HTTP_200_OK)
 

@@ -16,8 +16,11 @@ from django.contrib.auth import authenticate
 from django.db.models import Q, Count
 import random, openpyxl, jdatetime
 from django.http import HttpResponse
-from core.utils import apply_filters_and_sorting, get_accessible_queryset
+from core.utils import apply_filters_and_sorting, get_accessible_queryset, set_paginator
 from rest_framework_simplejwt.views import TokenObtainPairView
+from .utils import get_user_config
+
+user_config = get_user_config()
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -299,21 +302,28 @@ class UserSummaryAPIView(APIView):
 
         return Response(summary_data, status=status.HTTP_200_OK)
     
-
 class UserListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
 
     def get(self, request):
-        
-        sorting_fields = ['created_at', '-created_at', 'name', '-name', 'username', '-username']
-        applied_filters = ['groups', 'user_permissions', 'gender']
-        searching_fields = ['username', 'email', 'first_name', 'last_name', 'phone_number']
-        users = apply_filters_and_sorting(request, sorting_fields, applied_filters, searching_fields, session_key='user', model=User)
-        
-        
-        serializer = serializers.UserSerializer(users, many=True)
-        
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        users = apply_filters_and_sorting(
+            request, 
+            user_config['sorting'], 
+            user_config['filters'], 
+            user_config['search'], 
+            session_key='user', 
+            model=User
+        ).select_related('access_level')
+
+        paginator = set_paginator(request, users)
+        serializer = serializers.UserSerializer(paginator['data'], many=True)
+        return Response({
+            'results':serializer.data,
+            'total_pages': paginator['total_pages'],
+            'current_page': paginator['current_page'],
+            'total_items': paginator['total_items'],
+        }, status=status.HTTP_200_OK)
     
 
 class UserPermissionAssignmentAPIView(APIView):
